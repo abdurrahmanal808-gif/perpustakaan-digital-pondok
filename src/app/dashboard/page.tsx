@@ -38,7 +38,7 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-6">
       <section className="rounded-lg border border-gold/20 bg-bone p-6 shadow-sm">
-        <p className="text-sm font-semibold text-gold">Assalamu'alaikum</p>
+        <p className="text-sm font-semibold text-gold">{"Assalamu'alaikum"}</p>
         <h1 className="mt-1 text-3xl font-bold text-ink">
           Selamat datang, {user.full_name || user.username}
         </h1>

@@ -59,7 +59,7 @@ export function DeleteBookButton({ bookId, title }: DeleteBookButtonProps) {
               <div>
                 <h2 className="text-lg font-bold text-ink">Hapus buku?</h2>
                 <p className="mt-2 text-sm leading-6 text-slate-600">
-                  File buku, cover, dan metadata untuk "{title}" akan dihapus permanen.
+                  {`File buku, cover, dan metadata untuk "${title}" akan dihapus permanen.`}
                 </p>
               </div>
               <button
