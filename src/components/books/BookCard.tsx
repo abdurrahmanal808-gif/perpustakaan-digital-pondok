@@ -26,6 +26,10 @@ function totalFileSize(book: BookWithRelations) {
   return (book.book_files || []).reduce((sum, file) => sum + file.file_size, 0);
 }
 
+function formatBookType(value: string) {
+  return value === "pdf" ? "PDF" : "Scan";
+}
+
 function statusLabel(status: string) {
   const labels: Record<string, string> = {
     pending: "Menunggu",
@@ -44,10 +48,10 @@ export function BookCard({
   showManage = false
 }: BookCardProps) {
   return (
-    <article className="overflow-hidden rounded-lg border border-gold/20 bg-bone shadow-sm">
-      <div className="grid gap-0 sm:grid-cols-[150px_1fr]">
+    <article className="overflow-hidden rounded-lg border border-gold/20 bg-bone shadow-sm transition hover:border-gold/40 hover:shadow-md">
+      <div className="grid gap-0 sm:grid-cols-[190px_1fr]">
         <Link
-          className="block aspect-[3/4] bg-cream sm:aspect-auto"
+          className="block aspect-[3/4] bg-cream"
           href={`/books/${book.id}`}
         >
           {coverUrl ? (
@@ -104,23 +108,27 @@ export function BookCard({
             </p>
           ) : null}
 
-          <div className="mt-4 flex flex-wrap gap-3 text-sm text-slate-600">
-            <span className="inline-flex items-center gap-1">
-              <Eye size={16} />
-              {book.view_count}
+          <div className="mt-4 grid gap-2 text-sm text-slate-700 sm:grid-cols-2 lg:grid-cols-4">
+            <span className="inline-flex items-center gap-2 rounded-md bg-white px-3 py-2">
+              <Eye className="text-gold" size={16} />
+              Dilihat: {book.view_count}
             </span>
-            <span className="inline-flex items-center gap-1">
-              <Download size={16} />
-              {book.download_count}
+            <span className="inline-flex items-center gap-2 rounded-md bg-white px-3 py-2">
+              <Download className="text-gold" size={16} />
+              Download: {book.download_count}
             </span>
-            <span>{formatBytes(totalFileSize(book))}</span>
-            <span className="uppercase">{book.book_type}</span>
+            <span className="rounded-md bg-white px-3 py-2">
+              Ukuran: {formatBytes(totalFileSize(book))}
+            </span>
+            <span className="rounded-md bg-white px-3 py-2">
+              Format: {formatBookType(book.book_type)}
+            </span>
           </div>
 
-          <div className="mt-5 flex flex-wrap gap-2">
+          <div className="mt-5 flex flex-wrap gap-2 border-t border-gold/10 pt-4">
             <Link className={buttonClassName()} href={`/books/${book.id}/read`}>
               <BookOpen size={17} />
-              <span>Baca</span>
+              <span>Baca online</span>
             </Link>
             <a
               className={buttonClassName("secondary")}

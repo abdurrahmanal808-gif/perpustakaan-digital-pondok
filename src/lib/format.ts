@@ -38,3 +38,32 @@ export function publicName(user?: { username: string; full_name?: string | null 
 
   return user.full_name || user.username;
 }
+
+export function formatDisplayTitle(value: string) {
+  const normalized = value.trim().replace(/\s+/g, " ");
+
+  if (!normalized) {
+    return "Tanpa Judul";
+  }
+
+  const hasLower = /[a-z]/.test(normalized);
+  const hasUpper = /[A-Z]/.test(normalized);
+
+  if (hasLower && hasUpper) {
+    return normalized;
+  }
+
+  const smallWords = new Set(["dan", "di", "ke", "dari", "yang", "untuk", "atau"]);
+
+  return normalized
+    .toLowerCase()
+    .split(" ")
+    .map((word, index) => {
+      if (index > 0 && smallWords.has(word)) {
+        return word;
+      }
+
+      return word.charAt(0).toUpperCase() + word.slice(1);
+    })
+    .join(" ");
+}

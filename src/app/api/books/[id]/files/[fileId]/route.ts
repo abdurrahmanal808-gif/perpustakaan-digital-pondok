@@ -28,13 +28,28 @@ export async function GET(request: Request, { params }: RouteParams) {
     return NextResponse.json({ error: "File tidak ditemukan." }, { status: 404 });
   }
 
-  if (shouldDownload) {
-    await incrementDownloadCount(book.id, user?.id);
+  let signedUrl: string;
+
+  try {
+    signedUrl = shouldDownload
+      ? await createSignedDownloadUrl(
+          file.storage_bucket,
+          file.storage_path,
+          file.original_name
+        )
+      : await createSignedReadUrl(file.storage_bucket, file.storage_path);
+  } catch {
+    return NextResponse.json(
+      { error: "Link file gagal dibuat. Coba lagi sebentar lagi." },
+      { status: 500 }
+    );
   }
 
-  const signedUrl = shouldDownload
-    ? await createSignedDownloadUrl(file.storage_bucket, file.storage_path, file.original_name)
-    : await createSignedReadUrl(file.storage_bucket, file.storage_path);
+  if (shouldDownload) {
+    await incrementDownloadCount(book.id, user?.id).catch((error) => {
+      console.error("Gagal increment download count", error);
+    });
+  }
 
-  return NextResponse.redirect(signedUrl);
+  return NextResponse.redirect(signedUrl, 302);
 }

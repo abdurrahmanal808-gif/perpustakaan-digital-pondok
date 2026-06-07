@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { Toast } from "@/components/ui/Toast";
 
 type DeleteBookButtonProps = {
   bookId: string;
@@ -15,6 +16,9 @@ export function DeleteBookButton({ bookId, title }: DeleteBookButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState("");
+  const [toast, setToast] = useState<{ message: string; tone: "success" | "error" } | null>(
+    null
+  );
 
   async function handleDelete() {
     setIsDeleting(true);
@@ -28,18 +32,22 @@ export function DeleteBookButton({ bookId, title }: DeleteBookButtonProps) {
       const body = (await response.json().catch(() => null)) as {
         error?: string;
       } | null;
-      setError(body?.error || "Buku gagal dihapus.");
+      const message = body?.error || "Buku gagal dihapus.";
+      setError(message);
+      setToast({ message, tone: "error" });
       setIsDeleting(false);
       return;
     }
 
     setIsOpen(false);
     setIsDeleting(false);
-    router.refresh();
+    setToast({ message: "Buku berhasil dihapus.", tone: "success" });
+    window.setTimeout(() => router.refresh(), 500);
   }
 
   return (
     <>
+      <Toast message={toast?.message || ""} tone={toast?.tone} />
       <Button
         icon={<Trash2 size={17} />}
         onClick={() => setIsOpen(true)}
