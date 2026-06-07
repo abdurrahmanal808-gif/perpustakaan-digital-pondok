@@ -2,6 +2,7 @@ import "server-only";
 
 import { getSupabaseAdminClient } from "@/lib/db/admin";
 import { requireActiveUser } from "@/lib/auth/session";
+import type { BookWithRelations } from "@/lib/db/types";
 
 export async function getFavoriteIds(userId?: string | null) {
   if (!userId) {
@@ -17,7 +18,19 @@ export async function getFavoriteIds(userId?: string | null) {
   return new Set((data || []).map((favorite) => favorite.book_id as string));
 }
 
-export async function getFavoritesPage() {
+type FavoriteBookRow = {
+  books: BookWithRelations | BookWithRelations[] | null;
+};
+
+function normalizeFavoriteBook(value: FavoriteBookRow["books"]) {
+  if (Array.isArray(value)) {
+    return value[0] || null;
+  }
+
+  return value;
+}
+
+export async function getFavoritesPage(): Promise<BookWithRelations[]> {
   const { user } = await requireActiveUser();
   const supabase = getSupabaseAdminClient();
   const { data, error } = await supabase
@@ -32,5 +45,7 @@ export async function getFavoritesPage() {
     throw new Error(error.message);
   }
 
-  return data || [];
+  return ((data || []) as FavoriteBookRow[])
+    .map((favorite) => normalizeFavoriteBook(favorite.books))
+    .filter((book): book is BookWithRelations => Boolean(book));
 }

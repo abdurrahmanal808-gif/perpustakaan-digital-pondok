@@ -1,15 +1,11 @@
 import { getCoverUrlMap } from "@/lib/books/covers";
 import { getFavoritesPage } from "@/lib/favorites/queries";
-import type { BookWithRelations } from "@/lib/db/types";
 import { BookCard } from "@/components/books/BookCard";
 
 export const dynamic = "force-dynamic";
 
 export default async function FavoritesPage() {
-  const favorites = await getFavoritesPage();
-  const books = favorites
-    .map((favorite) => favorite.books)
-    .filter(Boolean) as BookWithRelations[];
+  const books = await getFavoritesPage();
   const coverUrls = await getCoverUrlMap(books);
 
   return (

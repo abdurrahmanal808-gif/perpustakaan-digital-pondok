@@ -84,15 +84,20 @@ export async function getCurrentSession() {
     return null;
   }
 
-  const record = data as SessionRecord & { users: AppUser | null };
+  const record = data as unknown as SessionRecord & {
+    users: AppUser | AppUser[] | null;
+  };
+  const sessionUser = Array.isArray(record.users)
+    ? record.users[0] || null
+    : record.users;
 
-  if (!record.users) {
+  if (!sessionUser) {
     return null;
   }
 
   return {
     session: record,
-    user: toPublicUser(record.users)
+    user: toPublicUser(sessionUser)
   };
 }
 
