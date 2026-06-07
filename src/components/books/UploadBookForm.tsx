@@ -1,0 +1,167 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { FormEvent, useState } from "react";
+import { Upload } from "lucide-react";
+import { MAX_UPLOAD_SIZE_BYTES } from "@/lib/constants";
+import type { Category } from "@/lib/db/types";
+import { formatBytes } from "@/lib/format";
+import { Button } from "@/components/ui/Button";
+
+type UploadResponse = {
+  book?: {
+    id: string;
+  };
+  error?: string;
+};
+
+type UploadBookFormProps = {
+  categories: Category[];
+};
+
+export function UploadBookForm({ categories }: UploadBookFormProps) {
+  const router = useRouter();
+  const [bookType, setBookType] = useState<"pdf" | "scan">("pdf");
+  const [isUploading, setIsUploading] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
+    setIsUploading(true);
+
+    const formData = new FormData(event.currentTarget);
+    const response = await fetch("/api/books/upload", {
+      method: "POST",
+      body: formData
+    });
+
+    const body = (await response.json().catch(() => ({}))) as UploadResponse;
+
+    if (!response.ok || !body.book) {
+      setError(body.error || "Upload gagal.");
+      setIsUploading(false);
+      return;
+    }
+
+    router.push(`/books/${body.book.id}`);
+    router.refresh();
+  }
+
+  return (
+    <form
+      className="rounded-lg border border-gold/20 bg-bone p-5 shadow-sm"
+      onSubmit={handleSubmit}
+    >
+      <div className="grid gap-4 md:grid-cols-2">
+        <label className="block">
+          <span className="text-sm font-medium text-slate-700">Judul buku</span>
+          <input
+            className="mt-1 w-full rounded-md border border-gold/30 bg-white px-3 py-2 text-sm outline-none transition focus:border-pondok focus:ring-2 focus:ring-pondok/10"
+            maxLength={180}
+            name="title"
+            required
+          />
+        </label>
+
+        <label className="block">
+          <span className="text-sm font-medium text-slate-700">Penulis</span>
+          <input
+            className="mt-1 w-full rounded-md border border-gold/30 bg-white px-3 py-2 text-sm outline-none transition focus:border-pondok focus:ring-2 focus:ring-pondok/10"
+            maxLength={140}
+            name="author"
+          />
+        </label>
+
+        <label className="block">
+          <span className="text-sm font-medium text-slate-700">Kategori</span>
+          <select
+            className="mt-1 w-full rounded-md border border-gold/30 bg-white px-3 py-2 text-sm outline-none transition focus:border-pondok focus:ring-2 focus:ring-pondok/10"
+            name="categoryId"
+            required
+          >
+            <option value="">Pilih kategori</option>
+            {categories.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.name}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="block">
+          <span className="text-sm font-medium text-slate-700">Jenis buku</span>
+          <select
+            className="mt-1 w-full rounded-md border border-gold/30 bg-white px-3 py-2 text-sm outline-none transition focus:border-pondok focus:ring-2 focus:ring-pondok/10"
+            name="bookType"
+            onChange={(event) => setBookType(event.target.value as "pdf" | "scan")}
+            value={bookType}
+          >
+            <option value="pdf">PDF</option>
+            <option value="scan">Scan gambar</option>
+          </select>
+        </label>
+
+        <label className="block">
+          <span className="text-sm font-medium text-slate-700">Cover buku</span>
+          <input
+            accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
+            className="mt-1 w-full rounded-md border border-dashed border-gold/40 bg-white px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-pondok file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white"
+            name="cover"
+            required
+            type="file"
+          />
+        </label>
+
+        <label className="block">
+          <span className="text-sm font-medium text-slate-700">File buku</span>
+          <input
+            accept={
+              bookType === "pdf"
+                ? "application/pdf,.pdf"
+                : "image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
+            }
+            className="mt-1 w-full rounded-md border border-dashed border-gold/40 bg-white px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-pondok file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white"
+            multiple={bookType === "scan"}
+            name="bookFiles"
+            required
+            type="file"
+          />
+          <span className="mt-1 block text-xs text-slate-500">
+            Total maksimal {formatBytes(MAX_UPLOAD_SIZE_BYTES)}
+          </span>
+        </label>
+      </div>
+
+      <label className="mt-4 block">
+        <span className="text-sm font-medium text-slate-700">Deskripsi</span>
+        <textarea
+          className="mt-1 min-h-32 w-full rounded-md border border-gold/30 bg-white px-3 py-2 text-sm outline-none transition focus:border-pondok focus:ring-2 focus:ring-pondok/10"
+          maxLength={1600}
+          name="description"
+        />
+      </label>
+
+      <label className="mt-4 flex items-start gap-3 rounded-md bg-cream p-3 text-sm text-slate-700">
+        <input className="mt-1" name="rightsConfirmed" required type="checkbox" />
+        <span>Saya memiliki hak atau izin untuk membagikan file buku ini.</span>
+      </label>
+
+      <p className="mt-3 text-sm text-slate-600">
+        Status awal buku adalah menunggu moderasi.
+      </p>
+
+      {error ? (
+        <p className="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+          {error}
+        </p>
+      ) : null}
+
+      <div className="mt-5 flex justify-end">
+        <Button disabled={isUploading} icon={<Upload size={18} />} type="submit">
+          {isUploading ? "Mengupload..." : "Upload buku"}
+        </Button>
+      </div>
+    </form>
+  );
+}
