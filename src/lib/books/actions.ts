@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { getSupabaseAdminClient } from "@/lib/db/admin";
 import { BOOK_COVERS_BUCKET } from "@/lib/constants";
@@ -106,6 +106,8 @@ export async function updateBook(formData: FormData) {
 
   revalidatePath(`/books/${bookId}`);
   revalidatePath("/dashboard/books");
+  revalidatePath("/catalog");
+  revalidateTag("public-books");
   redirect(`/books/${bookId}`);
 }
 
@@ -142,5 +144,6 @@ export async function deleteBook(bookId: string) {
 
   revalidatePath("/dashboard/books");
   revalidatePath("/catalog");
+  revalidateTag("public-books");
   return { ok: true };
 }

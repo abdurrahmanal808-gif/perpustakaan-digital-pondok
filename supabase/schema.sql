@@ -1,4 +1,5 @@
 create extension if not exists pgcrypto;
+create extension if not exists pg_trgm;
 
 do $$
 begin
@@ -252,6 +253,27 @@ create index if not exists books_search_idx on public.books using gin (
     coalesce(title, '') || ' ' || coalesce(author, '') || ' ' || coalesce(description, '')
   )
 );
+create index if not exists books_published_newest_idx
+on public.books (published_at desc, created_at desc)
+where status = 'published';
+create index if not exists books_published_category_newest_idx
+on public.books (category_id, published_at desc, created_at desc)
+where status = 'published';
+create index if not exists books_published_type_newest_idx
+on public.books (book_type, published_at desc, created_at desc)
+where status = 'published';
+create index if not exists books_published_popular_idx
+on public.books (view_count desc, created_at desc)
+where status = 'published';
+create index if not exists books_published_downloads_idx
+on public.books (download_count desc, created_at desc)
+where status = 'published';
+create index if not exists books_title_trgm_idx
+on public.books using gin (title gin_trgm_ops);
+create index if not exists books_author_trgm_idx
+on public.books using gin (author gin_trgm_ops);
+create index if not exists books_description_trgm_idx
+on public.books using gin (description gin_trgm_ops);
 create index if not exists book_files_book_id_idx on public.book_files (book_id);
 create index if not exists book_files_page_idx on public.book_files (book_id, page_number);
 create index if not exists favorites_user_id_idx on public.favorites (user_id);
@@ -377,7 +399,7 @@ values
     'book-covers',
     'book-covers',
     false,
-    52428800,
+    5242880,
     array['image/jpeg', 'image/png', 'image/webp']
   )
 on conflict (id) do update

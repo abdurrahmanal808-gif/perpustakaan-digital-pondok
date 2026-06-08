@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { BOOK_REPORT_STATUSES } from "@/lib/constants";
 import { getSupabaseAdminClient } from "@/lib/db/admin";
@@ -108,6 +108,8 @@ export async function adminCreateCategory(formData: FormData) {
 
   revalidatePath("/admin/categories");
   revalidatePath("/catalog");
+  revalidateTag("categories");
+  revalidateTag("public-books");
   redirect(
     `/admin/categories?success=${encodeURIComponent("Kategori berhasil ditambahkan.")}`
   );
@@ -148,6 +150,8 @@ export async function adminUpdateCategory(formData: FormData) {
 
   revalidatePath("/admin/categories");
   revalidatePath("/catalog");
+  revalidateTag("categories");
+  revalidateTag("public-books");
   redirect(
     `/admin/categories?success=${encodeURIComponent("Kategori berhasil diperbarui.")}`
   );
@@ -184,6 +188,8 @@ export async function adminDeleteCategory(formData: FormData) {
   }
 
   revalidatePath("/admin/categories");
+  revalidatePath("/catalog");
+  revalidateTag("categories");
   redirect(
     `/admin/categories?success=${encodeURIComponent("Kategori berhasil dihapus.")}`
   );
@@ -205,6 +211,7 @@ export async function adminHideBook(formData: FormData) {
   revalidatePath("/admin");
   revalidatePath(`/books/${bookId}`);
   revalidatePath("/catalog");
+  revalidateTag("public-books");
 }
 
 export async function adminPublishBook(formData: FormData) {
@@ -229,6 +236,7 @@ export async function adminPublishBook(formData: FormData) {
   revalidatePath("/admin");
   revalidatePath(`/books/${bookId}`);
   revalidatePath("/catalog");
+  revalidateTag("public-books");
 }
 
 export async function adminDeleteBook(formData: FormData) {
@@ -244,6 +252,7 @@ export async function adminDeleteBook(formData: FormData) {
   revalidatePath("/admin/reports");
   revalidatePath("/admin");
   revalidatePath("/catalog");
+  revalidateTag("public-books");
 }
 
 export async function adminUpdateReportStatus(formData: FormData) {

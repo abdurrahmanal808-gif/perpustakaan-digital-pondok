@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { getSupabaseAdminClient } from "@/lib/db/admin";
 import { getCurrentSession } from "@/lib/auth/session";
 import type { BookFile, BookType } from "@/lib/db/types";
@@ -156,6 +157,9 @@ export async function POST(request: Request) {
       await supabase.from("books").delete().eq("id", bookId);
       throw error;
     }
+
+    revalidatePath("/dashboard/books");
+    revalidateTag("public-books");
 
     return NextResponse.json({ book: { id: bookId } });
   } catch (error) {

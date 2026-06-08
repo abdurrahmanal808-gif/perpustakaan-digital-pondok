@@ -1,8 +1,10 @@
 import { notFound } from "next/navigation";
 import { updateBook } from "@/lib/books/actions";
+import { MAX_COVER_UPLOAD_SIZE_BYTES } from "@/lib/constants";
 import { getActiveCategories } from "@/lib/books/queries";
 import { getBookForEdit } from "@/lib/books/queries";
 import { requireActiveUser } from "@/lib/auth/session";
+import { formatBytes } from "@/lib/format";
 import { Button } from "@/components/ui/Button";
 
 export const dynamic = "force-dynamic";
@@ -106,7 +108,8 @@ export default async function EditBookPage({
               type="file"
             />
             <span className="mt-1 block text-xs text-slate-500">
-              Kosongkan jika tidak ingin mengganti cover.
+              Kosongkan jika tidak ingin mengganti cover. Maksimal{" "}
+              {formatBytes(MAX_COVER_UPLOAD_SIZE_BYTES)}.
             </span>
           </label>
         </div>

@@ -1,8 +1,25 @@
 import "server-only";
 
+import { unstable_cache } from "next/cache";
 import { BOOK_COVERS_BUCKET } from "@/lib/constants";
 import type { BookWithRelations, StorageProvider } from "@/lib/db/types";
 import { createSignedReadUrl } from "@/lib/storage/files";
+
+const COVER_SIGNED_URL_TTL_SECONDS = 60 * 60;
+
+const getCachedSignedCoverUrl = unstable_cache(
+  async (path: string, provider: StorageProvider) =>
+    createSignedReadUrl(
+      BOOK_COVERS_BUCKET,
+      path,
+      COVER_SIGNED_URL_TTL_SECONDS,
+      provider
+    ),
+  ["cover-signed-url-v1"],
+  {
+    revalidate: 60 * 50
+  }
+);
 
 export async function getCoverUrl(
   book: Pick<BookWithRelations, "cover_path"> & {
@@ -14,10 +31,8 @@ export async function getCoverUrl(
   }
 
   try {
-    return await createSignedReadUrl(
-      BOOK_COVERS_BUCKET,
+    return await getCachedSignedCoverUrl(
       book.cover_path,
-      60 * 10,
       book.cover_storage_provider || "supabase"
     );
   } catch {

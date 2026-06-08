@@ -3,6 +3,7 @@ import {
   ALLOWED_COVER_MIME_TYPES,
   BOOK_STATUSES,
   BOOK_TYPES,
+  MAX_COVER_UPLOAD_SIZE_BYTES,
   MAX_UPLOAD_SIZE_BYTES
 } from "@/lib/constants";
 import type { BookStatus, BookType } from "@/lib/db/types";
@@ -83,8 +84,8 @@ export function validateCoverFile(file: File) {
     return "Cover tidak boleh kosong.";
   }
 
-  if (file.size > MAX_UPLOAD_SIZE_BYTES) {
-    return "Cover terlalu besar.";
+  if (file.size > MAX_COVER_UPLOAD_SIZE_BYTES) {
+    return "Cover maksimal 5MB.";
   }
 
   return null;

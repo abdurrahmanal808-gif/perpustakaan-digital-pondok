@@ -1,5 +1,7 @@
 import "server-only";
 
+import { unstable_cache } from "next/cache";
+import { CATALOG_PAGE_SIZE } from "@/lib/constants";
 import { getSupabaseAdminClient } from "@/lib/db/admin";
 import type {
   Book,
@@ -18,6 +20,16 @@ export type BookSearchParams = {
   type?: BookType | "";
   sort?: "newest" | "popular" | "downloads";
   limit?: number;
+  page?: number;
+  perPage?: number;
+};
+
+export type PublicBookPage = {
+  books: BookWithRelations[];
+  page: number;
+  perPage: number;
+  totalBooks: number;
+  totalPages: number;
 };
 
 function cleanSearchTerm(value?: string) {
@@ -90,7 +102,7 @@ export async function getPublicBooks(params: BookSearchParams = {}) {
   let query = supabase
     .from("books")
     .select(
-      "*,categories(id,name,slug),users(id,username,full_name),book_files(*)"
+      "*,categories(id,name,slug),users(id,username,full_name),book_files(file_size)"
     )
     .eq("status", "published");
 
@@ -126,6 +138,109 @@ export async function getPublicBooks(params: BookSearchParams = {}) {
 
   return (data || []) as BookWithRelations[];
 }
+
+export async function getPublicBookPage(
+  params: BookSearchParams = {}
+): Promise<PublicBookPage> {
+  const supabase = getSupabaseAdminClient();
+  const search = cleanSearchTerm(params.search);
+  const perPage = Math.min(Math.max(params.perPage || CATALOG_PAGE_SIZE, 1), 48);
+  const page = Math.max(params.page || 1, 1);
+  const from = (page - 1) * perPage;
+  const to = from + perPage - 1;
+  let query = supabase
+    .from("books")
+    .select(
+      "*,categories(id,name,slug),users(id,username,full_name),book_files(file_size)",
+      { count: "exact" }
+    )
+    .eq("status", "published");
+
+  if (search) {
+    query = query.or(
+      `title.ilike.%${search}%,author.ilike.%${search}%,description.ilike.%${search}%`
+    );
+  }
+
+  if (params.category) {
+    query = query.eq("category_id", params.category);
+  }
+
+  if (params.type) {
+    query = query.eq("book_type", params.type);
+  }
+
+  if (params.sort === "popular") {
+    query = query.order("view_count", { ascending: false });
+  } else if (params.sort === "downloads") {
+    query = query.order("download_count", { ascending: false });
+  } else {
+    query = query.order("published_at", { ascending: false, nullsFirst: false });
+  }
+
+  query = query.order("created_at", { ascending: false }).range(from, to);
+
+  const { data, error, count } = await query;
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const totalBooks = count || 0;
+  const totalPages = Math.max(1, Math.ceil(totalBooks / perPage));
+
+  return {
+    books: (data || []) as BookWithRelations[],
+    page,
+    perPage,
+    totalBooks,
+    totalPages
+  };
+}
+
+const getCachedPublicBookPageInternal = unstable_cache(
+  async (
+    search: string,
+    category: string,
+    type: BookType | "",
+    sort: "newest" | "popular" | "downloads",
+    page: number,
+    perPage: number
+  ) =>
+    getPublicBookPage({
+      search,
+      category,
+      type,
+      sort,
+      page,
+      perPage
+    }),
+  ["public-book-page-v1"],
+  {
+    revalidate: 60,
+    tags: ["public-books"]
+  }
+);
+
+export function getCachedPublicBookPage(params: BookSearchParams = {}) {
+  return getCachedPublicBookPageInternal(
+    params.search || "",
+    params.category || "",
+    params.type || "",
+    params.sort || "newest",
+    params.page || 1,
+    params.perPage || CATALOG_PAGE_SIZE
+  );
+}
+
+export const getCachedActiveCategories = unstable_cache(
+  getActiveCategories,
+  ["active-categories-v1"],
+  {
+    revalidate: 300,
+    tags: ["categories"]
+  }
+);
 
 export async function getBookDetail(bookId: string, user?: PublicUser | null) {
   if (!user) {

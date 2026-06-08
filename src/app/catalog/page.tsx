@@ -1,9 +1,13 @@
 import { requireActiveUser } from "@/lib/auth/session";
 import { getCoverUrlMap } from "@/lib/books/covers";
-import { getActiveCategories, getPublicBooks } from "@/lib/books/queries";
+import {
+  getCachedActiveCategories,
+  getCachedPublicBookPage
+} from "@/lib/books/queries";
 import { getFavoriteIds } from "@/lib/favorites/queries";
 import { BookCard } from "@/components/books/BookCard";
 import { CatalogFilters } from "@/components/catalog/CatalogFilters";
+import { CatalogPagination } from "@/components/catalog/CatalogPagination";
 import { Library } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -13,30 +17,35 @@ type CatalogPageProps = {
     q?: string;
     category?: string;
     type?: "pdf" | "scan" | "";
-  sort?: "newest" | "popular" | "downloads";
+    sort?: "newest" | "popular" | "downloads";
+    page?: string;
   }>;
 };
 
 export default async function CatalogPage({ searchParams }: CatalogPageProps) {
   const params = await searchParams;
+  const page = Math.max(Number(params.page || "1") || 1, 1);
   const query = new URLSearchParams();
 
   if (params.q) query.set("q", params.q);
   if (params.category) query.set("category", params.category);
   if (params.type) query.set("type", params.type);
   if (params.sort) query.set("sort", params.sort);
+  if (page > 1) query.set("page", String(page));
 
   const nextPath = `/catalog${query.toString() ? `?${query.toString()}` : ""}`;
   const { user } = await requireActiveUser(nextPath);
-  const [books, categories] = await Promise.all([
-    getPublicBooks({
+  const [bookPage, categories] = await Promise.all([
+    getCachedPublicBookPage({
       search: params.q,
       category: params.category,
       type: params.type || "",
-      sort: params.sort || "newest"
+      sort: params.sort || "newest",
+      page
     }),
-    getActiveCategories()
+    getCachedActiveCategories()
   ]);
+  const { books, totalBooks, totalPages, perPage } = bookPage;
   const [coverUrls, favoriteIds] = await Promise.all([
     getCoverUrlMap(books),
     getFavoriteIds(user?.id)
@@ -50,7 +59,7 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
             <p className="text-sm font-semibold text-gold">Katalog publik</p>
             <h1 className="mt-1 text-3xl font-bold text-ink">Buku Terbit</h1>
             <p className="mt-2 text-sm text-slate-600">
-              {books.length} buku ditemukan
+              {totalBooks} buku ditemukan
             </p>
           </div>
         </div>
@@ -87,6 +96,19 @@ export default async function CatalogPage({ searchParams }: CatalogPageProps) {
             </p>
           </div>
         )}
+
+        <CatalogPagination
+          currentPage={page}
+          perPage={perPage}
+          searchParams={{
+            q: params.q,
+            category: params.category,
+            type: params.type,
+            sort: params.sort
+          }}
+          totalBooks={totalBooks}
+          totalPages={totalPages}
+        />
       </section>
     </main>
   );

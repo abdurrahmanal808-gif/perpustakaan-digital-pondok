@@ -9,6 +9,8 @@ export const BOOK_COVERS_BUCKET =
   process.env.BOOK_COVERS_BUCKET || "book-covers";
 
 export const MAX_UPLOAD_SIZE_BYTES = 50 * 1024 * 1024;
+export const MAX_COVER_UPLOAD_SIZE_BYTES = 5 * 1024 * 1024;
+export const CATALOG_PAGE_SIZE = 12;
 
 export const ALLOWED_BOOK_MIME_TYPES = [
   "application/pdf",

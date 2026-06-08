@@ -4,7 +4,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { Upload } from "lucide-react";
-import { MAX_UPLOAD_SIZE_BYTES } from "@/lib/constants";
+import {
+  MAX_COVER_UPLOAD_SIZE_BYTES,
+  MAX_UPLOAD_SIZE_BYTES
+} from "@/lib/constants";
 import type { Category } from "@/lib/db/types";
 import { formatBytes } from "@/lib/format";
 import { Button } from "@/components/ui/Button";
@@ -20,6 +23,62 @@ type UploadResponse = {
 type UploadBookFormProps = {
   categories: Category[];
 };
+
+const MAX_COVER_EDGE = 1200;
+const COVER_QUALITY = 0.82;
+
+function loadImageFromFile(file: File) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const image = new Image();
+
+    image.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(image);
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Cover gagal dibaca."));
+    };
+    image.src = url;
+  });
+}
+
+async function optimizeCoverFile(file: File) {
+  if (!file.type.startsWith("image/")) {
+    return file;
+  }
+
+  const image = await loadImageFromFile(file);
+  const scale = Math.min(1, MAX_COVER_EDGE / Math.max(image.width, image.height));
+  const width = Math.max(1, Math.round(image.width * scale));
+  const height = Math.max(1, Math.round(image.height * scale));
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+
+  const context = canvas.getContext("2d");
+  if (!context) {
+    return file;
+  }
+
+  context.fillStyle = "#fffaf0";
+  context.fillRect(0, 0, width, height);
+  context.drawImage(image, 0, 0, width, height);
+
+  const blob = await new Promise<Blob | null>((resolve) => {
+    canvas.toBlob(resolve, "image/jpeg", COVER_QUALITY);
+  });
+
+  if (!blob || blob.size >= file.size) {
+    return file;
+  }
+
+  return new File([blob], `cover-${Date.now()}.jpg`, {
+    type: "image/jpeg",
+    lastModified: Date.now()
+  });
+}
 
 export function UploadBookForm({ categories }: UploadBookFormProps) {
   const router = useRouter();
@@ -37,6 +96,20 @@ export function UploadBookForm({ categories }: UploadBookFormProps) {
     setIsUploading(true);
 
     const formData = new FormData(event.currentTarget);
+    const cover = formData.get("cover");
+
+    if (cover instanceof File && cover.size > 0) {
+      try {
+        const optimizedCover = await optimizeCoverFile(cover);
+        formData.set("cover", optimizedCover);
+      } catch {
+        setError("Cover gagal diproses. Coba gunakan gambar lain.");
+        setToast({ message: "Cover gagal diproses.", tone: "error" });
+        setIsUploading(false);
+        return;
+      }
+    }
+
     const response = await fetch("/api/books/upload", {
       method: "POST",
       body: formData
@@ -135,7 +208,8 @@ export function UploadBookForm({ categories }: UploadBookFormProps) {
             type="file"
           />
           <span className="mt-1 block text-xs text-slate-500">
-            Jika dikosongkan, sistem akan memakai cover default.
+            Jika dikosongkan, sistem akan memakai cover default. Cover akan
+            dikompres otomatis, maksimal {formatBytes(MAX_COVER_UPLOAD_SIZE_BYTES)}.
           </span>
         </label>
 
