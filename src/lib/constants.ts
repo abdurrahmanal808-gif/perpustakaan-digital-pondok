@@ -1,4 +1,6 @@
 export const APP_NAME = "Perpustakaan Digital Pondok";
+export const APP_INSTALL_NAME = "Maktabah Sunsal";
+export const APP_SHORT_NAME = "Maktabah";
 
 export const BOOK_FILES_BUCKET =
   process.env.BOOK_FILES_BUCKET || "book-files";
