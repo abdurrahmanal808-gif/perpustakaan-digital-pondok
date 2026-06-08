@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { APP_INSTALL_NAME, APP_NAME } from "@/lib/constants";
 import { DashboardBackButton } from "@/components/layout/DashboardBackButton";
 import { PwaInstallPrompt } from "@/components/pwa/PwaInstallPrompt";
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -32,9 +33,25 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#16452f",
-  colorScheme: "light"
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#16452f" },
+    { media: "(prefers-color-scheme: dark)", color: "#09110d" }
+  ],
+  colorScheme: "light dark"
 };
+
+const themeScript = `
+(() => {
+  try {
+    const key = "maktabah-theme";
+    const stored = localStorage.getItem(key);
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const dark = stored ? stored === "dark" : prefersDark;
+    document.documentElement.classList.toggle("dark", dark);
+    document.documentElement.style.colorScheme = dark ? "dark" : "light";
+  } catch (_) {}
+})();
+`;
 
 export default function RootLayout({
   children
@@ -42,10 +59,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="id">
+    <html lang="id" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body>
         {children}
         <DashboardBackButton />
+        <ThemeToggle />
         <PwaInstallPrompt />
       </body>
     </html>

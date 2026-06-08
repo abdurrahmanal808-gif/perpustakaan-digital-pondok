@@ -1,6 +1,7 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
+  darkMode: "class",
   content: [
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
@@ -9,14 +10,14 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        ink: "#1f2a23",
-        pondok: "#16452f",
-        leaf: "#2f7d4b",
-        cream: "#f6f0df",
-        bone: "#fffaf0",
-        gold: "#b68a2c",
-        clay: "#8a5a35",
-        paper: "#fbf8ee"
+        ink: "rgb(var(--color-ink) / <alpha-value>)",
+        pondok: "rgb(var(--color-pondok) / <alpha-value>)",
+        leaf: "rgb(var(--color-leaf) / <alpha-value>)",
+        cream: "rgb(var(--color-cream) / <alpha-value>)",
+        bone: "rgb(var(--color-bone) / <alpha-value>)",
+        gold: "rgb(var(--color-gold) / <alpha-value>)",
+        clay: "rgb(var(--color-clay) / <alpha-value>)",
+        paper: "rgb(var(--color-paper) / <alpha-value>)"
       }
     }
   },
