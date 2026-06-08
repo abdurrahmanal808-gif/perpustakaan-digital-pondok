@@ -52,6 +52,7 @@ export async function updateBook(formData: FormData) {
   const cover = formData.get("cover");
   const removeCover = String(formData.get("removeCover") || "") === "on";
   let newCoverPath = book.cover_path;
+  let newCoverStorageProvider = book.cover_storage_provider || "supabase";
 
   if (cover instanceof File && cover.size > 0) {
     const coverError = validateCoverFile(cover);
@@ -66,19 +67,23 @@ export async function updateBook(formData: FormData) {
       await deleteStorageFiles([
         {
           bucket: BOOK_COVERS_BUCKET,
-          path: book.cover_path
+          path: book.cover_path,
+          provider: book.cover_storage_provider || "supabase"
         }
       ]);
     }
     newCoverPath = target.path;
+    newCoverStorageProvider = target.provider;
   } else if (removeCover && book.cover_path) {
     await deleteStorageFiles([
       {
         bucket: BOOK_COVERS_BUCKET,
-        path: book.cover_path
+        path: book.cover_path,
+        provider: book.cover_storage_provider || "supabase"
       }
     ]);
     newCoverPath = null;
+    newCoverStorageProvider = "supabase";
   }
 
   const supabase = getSupabaseAdminClient();
@@ -90,6 +95,7 @@ export async function updateBook(formData: FormData) {
       description: metadata.description || null,
       category_id: metadata.categoryId,
       cover_path: newCoverPath,
+      cover_storage_provider: newCoverStorageProvider,
       status: allowedStatus,
       published_at:
         allowedStatus === "published" && !book.published_at
@@ -114,13 +120,15 @@ export async function deleteBook(bookId: string) {
   const files = await getBookFiles(bookId);
   const storageFiles = files.map((file) => ({
     bucket: file.storage_bucket,
-    path: file.storage_path
+    path: file.storage_path,
+    provider: file.storage_provider || "supabase"
   }));
 
   if (book.cover_path) {
     storageFiles.push({
       bucket: BOOK_COVERS_BUCKET,
-      path: book.cover_path
+      path: book.cover_path,
+      provider: book.cover_storage_provider || "supabase"
     });
   }
 

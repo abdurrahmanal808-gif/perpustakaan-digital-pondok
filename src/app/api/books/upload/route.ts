@@ -16,7 +16,6 @@ import {
   validateBookMetadata,
   validateCoverFile
 } from "@/lib/validations/book";
-import { BOOK_FILES_BUCKET } from "@/lib/constants";
 
 function formFiles(formData: FormData, key: string) {
   return formData
@@ -85,7 +84,11 @@ export async function POST(request: Request) {
 
     const bookId = randomUUID();
     const coverUploadTarget = hasCover ? coverTarget(user.id, bookId, cover.name) : null;
-    const storageUploads: Array<{ bucket: string; path: string }> = [];
+    const storageUploads: Array<{
+      bucket: string;
+      path: string;
+      provider: "supabase" | "r2";
+    }> = [];
 
     const { error: bookError } = await supabase.from("books").insert({
       id: bookId,
@@ -97,6 +100,7 @@ export async function POST(request: Request) {
       book_type: bookType,
       status: "pending",
       cover_path: coverUploadTarget?.path || null,
+      cover_storage_provider: coverUploadTarget?.provider || "supabase",
       rights_confirmed: metadata.rightsConfirmed,
       published_at: null
     });
@@ -129,8 +133,9 @@ export async function POST(request: Request) {
         fileRows.push({
           id: randomUUID(),
           book_id: bookId,
-          storage_bucket: BOOK_FILES_BUCKET,
+          storage_bucket: target.bucket,
           storage_path: target.path,
+          storage_provider: target.provider,
           original_name: file.name,
           mime_type: file.type,
           file_size: file.size,

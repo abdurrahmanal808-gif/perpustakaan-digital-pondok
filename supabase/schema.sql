@@ -106,6 +106,7 @@ create table if not exists public.books (
   book_type public.book_type not null,
   status public.book_status not null default 'pending',
   cover_path text,
+  cover_storage_provider text not null default 'supabase',
   rights_confirmed boolean not null default false,
   view_count integer not null default 0,
   download_count integer not null default 0,
@@ -115,6 +116,9 @@ create table if not exists public.books (
   constraint books_title_length check (length(title) between 1 and 180),
   constraint books_author_length check (author is null or length(author) <= 140),
   constraint books_description_length check (description is null or length(description) <= 1600),
+  constraint books_cover_storage_provider_allowed check (
+    cover_storage_provider in ('supabase', 'r2')
+  ),
   constraint books_rights_confirmed check (rights_confirmed = true),
   constraint books_non_negative_stats check (view_count >= 0 and download_count >= 0)
 );
@@ -124,6 +128,7 @@ create table if not exists public.book_files (
   book_id uuid not null references public.books(id) on delete cascade,
   storage_bucket text not null,
   storage_path text not null unique,
+  storage_provider text not null default 'supabase',
   original_name text not null,
   mime_type text not null,
   file_size bigint not null,
@@ -132,6 +137,9 @@ create table if not exists public.book_files (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint book_files_positive_size check (file_size > 0 and file_size <= 52428800),
+  constraint book_files_storage_provider_allowed check (
+    storage_provider in ('supabase', 'r2')
+  ),
   constraint book_files_page_number check (
     (file_kind = 'page' and page_number is not null and page_number > 0)
     or (file_kind <> 'page' and page_number is null)
@@ -259,6 +267,21 @@ on public.book_reports (book_id, reporter_user_id)
 where status in ('open', 'reviewing');
 
 alter table public.books alter column cover_path drop not null;
+alter table public.books
+add column if not exists cover_storage_provider text not null default 'supabase';
+alter table public.books
+drop constraint if exists books_cover_storage_provider_allowed;
+alter table public.books
+add constraint books_cover_storage_provider_allowed
+check (cover_storage_provider in ('supabase', 'r2'));
+
+alter table public.book_files
+add column if not exists storage_provider text not null default 'supabase';
+alter table public.book_files
+drop constraint if exists book_files_storage_provider_allowed;
+alter table public.book_files
+add constraint book_files_storage_provider_allowed
+check (storage_provider in ('supabase', 'r2'));
 
 drop trigger if exists users_updated_at on public.users;
 create trigger users_updated_at before update on public.users

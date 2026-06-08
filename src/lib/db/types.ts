@@ -2,6 +2,7 @@ export type UserRole = "user" | "admin";
 export type BookType = "pdf" | "scan";
 export type BookStatus = "pending" | "published" | "hidden" | "deleted";
 export type FileKind = "pdf" | "page" | "cover";
+export type StorageProvider = "supabase" | "r2";
 export type BookReportReason =
   | "copyright"
   | "broken_file"
@@ -61,6 +62,7 @@ export type Book = {
   book_type: BookType;
   status: BookStatus;
   cover_path: string | null;
+  cover_storage_provider: StorageProvider;
   rights_confirmed: boolean;
   view_count: number;
   download_count: number;
@@ -74,6 +76,7 @@ export type BookFile = {
   book_id: string;
   storage_bucket: string;
   storage_path: string;
+  storage_provider: StorageProvider;
   original_name: string;
   mime_type: string;
   file_size: number;

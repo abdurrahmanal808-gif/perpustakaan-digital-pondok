@@ -37,7 +37,9 @@ export async function GET(_request: Request, { params }: RouteParams) {
     signedUrl = await createSignedDownloadUrl(
       file.storage_bucket,
       file.storage_path,
-      file.original_name
+      file.original_name,
+      60 * 5,
+      file.storage_provider || "supabase"
     );
   } catch {
     return NextResponse.json(

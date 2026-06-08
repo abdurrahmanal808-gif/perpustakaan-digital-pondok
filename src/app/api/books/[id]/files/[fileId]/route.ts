@@ -44,9 +44,16 @@ export async function GET(request: Request, { params }: RouteParams) {
       ? await createSignedDownloadUrl(
           file.storage_bucket,
           file.storage_path,
-          file.original_name
+          file.original_name,
+          60 * 5,
+          file.storage_provider || "supabase"
         )
-      : await createSignedReadUrl(file.storage_bucket, file.storage_path);
+      : await createSignedReadUrl(
+          file.storage_bucket,
+          file.storage_path,
+          60 * 10,
+          file.storage_provider || "supabase"
+        );
   } catch {
     return NextResponse.json(
       { error: "Link file gagal dibuat. Coba lagi sebentar lagi." },

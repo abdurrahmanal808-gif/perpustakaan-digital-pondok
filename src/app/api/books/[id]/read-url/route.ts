@@ -48,11 +48,21 @@ export async function GET(_request: Request, { params }: RouteParams) {
         pageNumber: file.page_number,
         originalName: file.original_name,
         mimeType: file.mime_type,
-        url: await createSignedReadUrl(file.storage_bucket, file.storage_path)
+        url: await createSignedReadUrl(
+          file.storage_bucket,
+          file.storage_path,
+          60 * 10,
+          file.storage_provider || "supabase"
+        )
       }))
     );
     if (book.cover_path) {
-      coverUrl = await createSignedReadUrl(BOOK_COVERS_BUCKET, book.cover_path);
+      coverUrl = await createSignedReadUrl(
+        BOOK_COVERS_BUCKET,
+        book.cover_path,
+        60 * 10,
+        book.cover_storage_provider || "supabase"
+      );
     }
   } catch {
     return NextResponse.json(

@@ -2,14 +2,29 @@ import "server-only";
 
 import { BOOK_COVERS_BUCKET, BOOK_FILES_BUCKET } from "@/lib/constants";
 import { getSupabaseAdminClient } from "@/lib/db/admin";
+import type { StorageProvider } from "@/lib/db/types";
 import { sanitizeFileName } from "@/lib/security/filename";
+import {
+  createR2SignedDownloadUrl,
+  createR2SignedReadUrl,
+  deleteFileFromR2,
+  getStorageBucketForProvider,
+  getUploadStorageProvider,
+  uploadFileToR2
+} from "@/lib/storage/r2";
 
 export type UploadTarget = {
   bucket: string;
   path: string;
+  provider: StorageProvider;
 };
 
 export async function uploadFileToStorage(file: File, target: UploadTarget) {
+  if (target.provider === "r2") {
+    await uploadFileToR2(file, target.path);
+    return;
+  }
+
   const supabase = getSupabaseAdminClient();
   const buffer = Buffer.from(await file.arrayBuffer());
   const { error } = await supabase.storage
@@ -25,10 +40,13 @@ export async function uploadFileToStorage(file: File, target: UploadTarget) {
 }
 
 export async function deleteStorageFiles(
-  files: Array<{ bucket: string; path: string }>
+  files: Array<{ bucket: string; path: string; provider?: StorageProvider }>
 ) {
+  const supabaseFiles = files.filter((file) => (file.provider || "supabase") === "supabase");
+  const r2Files = files.filter((file) => file.provider === "r2");
+
   const supabase = getSupabaseAdminClient();
-  const grouped = files.reduce<Record<string, string[]>>((acc, file) => {
+  const grouped = supabaseFiles.reduce<Record<string, string[]>>((acc, file) => {
     acc[file.bucket] ||= [];
     acc[file.bucket].push(file.path);
     return acc;
@@ -39,13 +57,20 @@ export async function deleteStorageFiles(
       await supabase.storage.from(bucket).remove(paths);
     }
   }
+
+  await Promise.all(r2Files.map((file) => deleteFileFromR2(file.path)));
 }
 
 export async function createSignedReadUrl(
   bucket: string,
   path: string,
-  expiresIn = 60 * 10
+  expiresIn = 60 * 10,
+  provider: StorageProvider = "supabase"
 ) {
+  if (provider === "r2") {
+    return createR2SignedReadUrl(path, expiresIn);
+  }
+
   const supabase = getSupabaseAdminClient();
   const { data, error } = await supabase.storage
     .from(bucket)
@@ -62,8 +87,13 @@ export async function createSignedDownloadUrl(
   bucket: string,
   path: string,
   fileName: string,
-  expiresIn = 60 * 5
+  expiresIn = 60 * 5,
+  provider: StorageProvider = "supabase"
 ) {
+  if (provider === "r2") {
+    return createR2SignedDownloadUrl(path, fileName, expiresIn);
+  }
+
   const supabase = getSupabaseAdminClient();
   const { data, error } = await supabase.storage
     .from(bucket)
@@ -100,16 +130,22 @@ export function buildPagePath(
 }
 
 export function coverTarget(userId: string, bookId: string, fileName: string) {
+  const provider = getUploadStorageProvider();
+
   return {
-    bucket: BOOK_COVERS_BUCKET,
-    path: buildCoverPath(userId, bookId, `cover-${Date.now()}-${fileName}`)
+    bucket: getStorageBucketForProvider(provider, BOOK_COVERS_BUCKET),
+    path: buildCoverPath(userId, bookId, `cover-${Date.now()}-${fileName}`),
+    provider
   };
 }
 
 export function bookPdfTarget(userId: string, bookId: string, fileName: string) {
+  const provider = getUploadStorageProvider();
+
   return {
-    bucket: BOOK_FILES_BUCKET,
-    path: buildPdfPath(userId, bookId, fileName)
+    bucket: getStorageBucketForProvider(provider, BOOK_FILES_BUCKET),
+    path: buildPdfPath(userId, bookId, fileName),
+    provider
   };
 }
 
@@ -119,8 +155,11 @@ export function bookPageTarget(
   pageNumber: number,
   fileName: string
 ) {
+  const provider = getUploadStorageProvider();
+
   return {
-    bucket: BOOK_FILES_BUCKET,
-    path: buildPagePath(userId, bookId, pageNumber, fileName)
+    bucket: getStorageBucketForProvider(provider, BOOK_FILES_BUCKET),
+    path: buildPagePath(userId, bookId, pageNumber, fileName),
+    provider
   };
 }

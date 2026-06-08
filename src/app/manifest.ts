@@ -7,7 +7,7 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: APP_SHORT_NAME,
     description:
       "Aplikasi perpustakaan digital pondok untuk membaca dan mengelola koleksi buku.",
-    start_url: "/dashboard",
+    start_url: "/",
     scope: "/",
     display: "standalone",
     background_color: "#fbf8ee",
