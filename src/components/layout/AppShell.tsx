@@ -8,6 +8,7 @@ import {
   Heart,
   LayoutDashboard,
   Library,
+  ListTree,
   ShieldCheck,
   Upload,
   UserRound
@@ -75,6 +76,11 @@ export function AppShell({ children, userName, role }: AppShellProps) {
             href: "/admin",
             label: "Admin",
             icon: ShieldCheck
+          },
+          {
+            href: "/admin/categories",
+            label: "Kategori",
+            icon: ListTree
           }
         ]
       : navItems;

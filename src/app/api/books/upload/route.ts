@@ -55,13 +55,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: metadataError }, { status: 400 });
     }
 
-    if (!(cover instanceof File) || cover.size <= 0) {
-      return NextResponse.json({ error: "Cover buku wajib diupload." }, { status: 400 });
-    }
+    const hasCover = cover instanceof File && cover.size > 0;
 
-    const coverError = validateCoverFile(cover);
-    if (coverError) {
-      return NextResponse.json({ error: coverError }, { status: 400 });
+    if (hasCover) {
+      const coverError = validateCoverFile(cover);
+      if (coverError) {
+        return NextResponse.json({ error: coverError }, { status: 400 });
+      }
     }
 
     const metadata = normalizeBookMetadata(metadataInput);
@@ -84,7 +84,7 @@ export async function POST(request: Request) {
     }
 
     const bookId = randomUUID();
-    const coverUploadTarget = coverTarget(user.id, bookId, cover.name);
+    const coverUploadTarget = hasCover ? coverTarget(user.id, bookId, cover.name) : null;
     const storageUploads: Array<{ bucket: string; path: string }> = [];
 
     const { error: bookError } = await supabase.from("books").insert({
@@ -96,7 +96,7 @@ export async function POST(request: Request) {
       description: metadata.description || null,
       book_type: bookType,
       status: "pending",
-      cover_path: coverUploadTarget.path,
+      cover_path: coverUploadTarget?.path || null,
       rights_confirmed: metadata.rightsConfirmed,
       published_at: null
     });
@@ -109,8 +109,10 @@ export async function POST(request: Request) {
     }
 
     try {
-      await uploadFileToStorage(cover, coverUploadTarget);
-      storageUploads.push(coverUploadTarget);
+      if (hasCover && coverUploadTarget) {
+        await uploadFileToStorage(cover, coverUploadTarget);
+        storageUploads.push(coverUploadTarget);
+      }
 
       const fileRows: Omit<BookFile, "created_at" | "updated_at">[] = [];
 

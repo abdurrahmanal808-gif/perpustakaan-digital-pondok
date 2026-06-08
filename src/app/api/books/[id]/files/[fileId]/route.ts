@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth/session";
+import { getCurrentSession, loginRedirectPath } from "@/lib/auth/session";
 import { getBookDetail } from "@/lib/books/queries";
 import { createSignedDownloadUrl, createSignedReadUrl } from "@/lib/storage/files";
 import { incrementDownloadCount } from "@/lib/reading/queries";
@@ -15,7 +15,16 @@ export async function GET(request: Request, { params }: RouteParams) {
   const { id, fileId } = await params;
   const url = new URL(request.url);
   const shouldDownload = url.searchParams.get("download") === "1";
-  const user = await getCurrentUser();
+  const current = await getCurrentSession();
+
+  if (!current || current.user.is_blocked) {
+    return NextResponse.redirect(
+      loginRedirectPath(`/api/books/${id}/files/${fileId}${shouldDownload ? "?download=1" : ""}`),
+      302
+    );
+  }
+
+  const { user } = current;
   const book = await getBookDetail(id, user);
 
   if (!book) {

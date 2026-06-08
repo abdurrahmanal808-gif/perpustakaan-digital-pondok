@@ -106,18 +106,30 @@ export async function getCurrentUser() {
   return current?.user || null;
 }
 
-export async function requireUser() {
+export function loginRedirectPath(nextPath?: string) {
+  const params = new URLSearchParams({
+    error: "auth_required"
+  });
+
+  if (nextPath?.startsWith("/") && !nextPath.startsWith("//")) {
+    params.set("next", nextPath);
+  }
+
+  return `/login?${params.toString()}`;
+}
+
+export async function requireUser(nextPath?: string) {
   const current = await getCurrentSession();
 
   if (!current) {
-    redirect("/login");
+    redirect(loginRedirectPath(nextPath));
   }
 
   return current;
 }
 
-export async function requireActiveUser() {
-  const current = await requireUser();
+export async function requireActiveUser(nextPath?: string) {
+  const current = await requireUser(nextPath);
 
   if (current.user.is_blocked) {
     redirect("/login?error=blocked");

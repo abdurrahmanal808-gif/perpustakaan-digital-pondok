@@ -9,6 +9,7 @@ import { getCoverUrlMap } from "@/lib/books/covers";
 import type { BookWithRelations } from "@/lib/db/types";
 import { formatDate, publicName } from "@/lib/format";
 import { Button, buttonClassName } from "@/components/ui/Button";
+import { DefaultBookCover } from "@/components/books/DefaultBookCover";
 
 export const dynamic = "force-dynamic";
 
@@ -36,8 +37,8 @@ export default async function AdminBooksPage() {
                 src={coverUrls.get(book.id)}
               />
             ) : (
-              <div className="flex aspect-[3/4] w-24 items-center justify-center rounded-md bg-cream p-2 text-center text-xs font-semibold text-clay">
-                {book.title}
+              <div className="aspect-[3/4] w-24 overflow-hidden rounded-md">
+                <DefaultBookCover title={book.title} />
               </div>
             )}
 

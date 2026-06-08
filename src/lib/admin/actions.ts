@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { getSupabaseAdminClient } from "@/lib/db/admin";
 import { requireAdmin } from "@/lib/auth/session";
 import { deleteBook } from "@/lib/books/actions";
@@ -86,14 +87,27 @@ export async function adminCreateCategory(formData: FormData) {
   }
 
   const supabase = getSupabaseAdminClient();
-  await supabase.from("categories").insert({
+  const { error } = await supabase.from("categories").insert({
     name,
     slug,
     description: description || null
   });
 
+  if (error) {
+    redirect(
+      `/admin/categories?error=${encodeURIComponent(
+        error.code === "23505"
+          ? "Nama atau slug kategori sudah dipakai."
+          : "Kategori gagal dibuat."
+      )}`
+    );
+  }
+
   revalidatePath("/admin/categories");
   revalidatePath("/catalog");
+  redirect(
+    `/admin/categories?success=${encodeURIComponent("Kategori berhasil ditambahkan.")}`
+  );
 }
 
 export async function adminUpdateCategory(formData: FormData) {
@@ -109,7 +123,7 @@ export async function adminUpdateCategory(formData: FormData) {
   }
 
   const supabase = getSupabaseAdminClient();
-  await supabase
+  const { error } = await supabase
     .from("categories")
     .update({
       name,
@@ -119,8 +133,21 @@ export async function adminUpdateCategory(formData: FormData) {
     })
     .eq("id", categoryId);
 
+  if (error) {
+    redirect(
+      `/admin/categories?error=${encodeURIComponent(
+        error.code === "23505"
+          ? "Nama atau slug kategori sudah dipakai."
+          : "Kategori gagal diperbarui."
+      )}`
+    );
+  }
+
   revalidatePath("/admin/categories");
   revalidatePath("/catalog");
+  redirect(
+    `/admin/categories?success=${encodeURIComponent("Kategori berhasil diperbarui.")}`
+  );
 }
 
 export async function adminDeleteCategory(formData: FormData) {
@@ -132,9 +159,31 @@ export async function adminDeleteCategory(formData: FormData) {
   }
 
   const supabase = getSupabaseAdminClient();
-  await supabase.from("categories").delete().eq("id", categoryId);
+  const { count } = await supabase
+    .from("books")
+    .select("id", { count: "exact", head: true })
+    .eq("category_id", categoryId);
+
+  if ((count || 0) > 0) {
+    redirect(
+      `/admin/categories?error=${encodeURIComponent(
+        "Kategori ini masih digunakan oleh beberapa buku."
+      )}`
+    );
+  }
+
+  const { error } = await supabase.from("categories").delete().eq("id", categoryId);
+
+  if (error) {
+    redirect(
+      `/admin/categories?error=${encodeURIComponent("Kategori gagal dihapus.")}`
+    );
+  }
 
   revalidatePath("/admin/categories");
+  redirect(
+    `/admin/categories?success=${encodeURIComponent("Kategori berhasil dihapus.")}`
+  );
 }
 
 export async function adminHideBook(formData: FormData) {

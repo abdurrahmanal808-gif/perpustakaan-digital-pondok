@@ -28,6 +28,14 @@ export function AuthForm({ mode }: AuthFormProps) {
   const searchParams = useSearchParams();
   const blockedError =
     searchParams.get("error") === "blocked" ? "Akun Anda sedang diblokir." : "";
+  const authRequiredError =
+    searchParams.get("error") === "auth_required"
+      ? "Silakan login terlebih dahulu untuk mengakses perpustakaan."
+      : "";
+  const redirectTo = searchParams.get("next") || "";
+  const switchAuthHref = `${isLogin ? "/register" : "/login"}${
+    redirectTo ? `?next=${encodeURIComponent(redirectTo)}` : ""
+  }`;
   const passwordHint = useMemo(() => {
     if (isLogin || password.length === 0) {
       return "";
@@ -65,6 +73,7 @@ export function AuthForm({ mode }: AuthFormProps) {
       </div>
 
       <form action={formAction} className="space-y-4">
+        <input name="redirectTo" type="hidden" value={redirectTo} />
         <label className="block">
           <span className="text-sm font-medium text-slate-700">Username</span>
           <input
@@ -156,12 +165,12 @@ export function AuthForm({ mode }: AuthFormProps) {
           </p>
         ) : null}
 
-        {state.error || blockedError ? (
+        {state.error || blockedError || authRequiredError ? (
           <p
             aria-live="polite"
             className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700"
           >
-            {state.error || blockedError}
+            {state.error || blockedError || authRequiredError}
           </p>
         ) : null}
 
@@ -179,7 +188,7 @@ export function AuthForm({ mode }: AuthFormProps) {
         {isLogin ? "Belum punya akun?" : "Sudah punya akun?"}{" "}
         <Link
           className="font-semibold text-pondok hover:text-leaf"
-          href={isLogin ? "/register" : "/login"}
+          href={switchAuthHref}
         >
           {isLogin ? "Daftar" : "Masuk"}
         </Link>

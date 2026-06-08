@@ -50,6 +50,7 @@ export async function updateBook(formData: FormData) {
   const metadata = normalizeBookMetadata(input);
   const allowedStatus: BookStatus = user.role === "admin" ? metadata.status : "pending";
   const cover = formData.get("cover");
+  const removeCover = String(formData.get("removeCover") || "") === "on";
   let newCoverPath = book.cover_path;
 
   if (cover instanceof File && cover.size > 0) {
@@ -61,13 +62,23 @@ export async function updateBook(formData: FormData) {
 
     const target = coverTarget(book.user_id, book.id, cover.name);
     await uploadFileToStorage(cover, target);
+    if (book.cover_path) {
+      await deleteStorageFiles([
+        {
+          bucket: BOOK_COVERS_BUCKET,
+          path: book.cover_path
+        }
+      ]);
+    }
+    newCoverPath = target.path;
+  } else if (removeCover && book.cover_path) {
     await deleteStorageFiles([
       {
         bucket: BOOK_COVERS_BUCKET,
         path: book.cover_path
       }
     ]);
-    newCoverPath = target.path;
+    newCoverPath = null;
   }
 
   const supabase = getSupabaseAdminClient();
@@ -106,10 +117,12 @@ export async function deleteBook(bookId: string) {
     path: file.storage_path
   }));
 
-  storageFiles.push({
-    bucket: BOOK_COVERS_BUCKET,
-    path: book.cover_path
-  });
+  if (book.cover_path) {
+    storageFiles.push({
+      bucket: BOOK_COVERS_BUCKET,
+      path: book.cover_path
+    });
+  }
 
   await deleteStorageFiles(storageFiles);
 

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth/session";
+import { getCurrentSession, loginRedirectPath } from "@/lib/auth/session";
 import { getBookDetail } from "@/lib/books/queries";
 import { createSignedDownloadUrl } from "@/lib/storage/files";
 import { incrementDownloadCount } from "@/lib/reading/queries";
@@ -12,7 +12,13 @@ type RouteParams = {
 
 export async function GET(_request: Request, { params }: RouteParams) {
   const { id } = await params;
-  const user = await getCurrentUser();
+  const current = await getCurrentSession();
+
+  if (!current || current.user.is_blocked) {
+    return NextResponse.redirect(loginRedirectPath(`/api/books/${id}/download`), 302);
+  }
+
+  const { user } = current;
   const book = await getBookDetail(id, user);
 
   if (!book) {

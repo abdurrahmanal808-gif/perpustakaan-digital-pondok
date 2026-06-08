@@ -5,6 +5,10 @@ import type { BookWithRelations } from "@/lib/db/types";
 import { createSignedReadUrl } from "@/lib/storage/files";
 
 export async function getCoverUrl(book: Pick<BookWithRelations, "cover_path">) {
+  if (!book.cover_path) {
+    return "";
+  }
+
   try {
     return await createSignedReadUrl(BOOK_COVERS_BUCKET, book.cover_path);
   } catch {

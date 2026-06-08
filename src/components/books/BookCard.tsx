@@ -13,6 +13,7 @@ import type { BookWithRelations } from "@/lib/db/types";
 import { formatBytes, formatDate, publicName } from "@/lib/format";
 import { buttonClassName, Button } from "@/components/ui/Button";
 import { DeleteBookButton } from "@/components/books/DeleteBookButton";
+import { DefaultBookCover } from "@/components/books/DefaultBookCover";
 import { toggleFavorite } from "@/lib/favorites/actions";
 
 type BookCardProps = {
@@ -61,9 +62,7 @@ export function BookCard({
               src={coverUrl}
             />
           ) : (
-            <div className="flex h-full items-center justify-center px-4 text-center text-sm font-semibold text-clay">
-              {book.title}
-            </div>
+            <DefaultBookCover title={book.title} />
           )}
         </Link>
 

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { BOOK_COVERS_BUCKET } from "@/lib/constants";
-import { getCurrentUser } from "@/lib/auth/session";
+import { getCurrentSession } from "@/lib/auth/session";
 import { getBookDetail } from "@/lib/books/queries";
 import { createSignedReadUrl } from "@/lib/storage/files";
 import { incrementBookView } from "@/lib/reading/queries";
@@ -13,7 +13,16 @@ type RouteParams = {
 
 export async function GET(_request: Request, { params }: RouteParams) {
   const { id } = await params;
-  const user = await getCurrentUser();
+  const current = await getCurrentSession();
+
+  if (!current || current.user.is_blocked) {
+    return NextResponse.json(
+      { error: "Silakan login terlebih dahulu untuk mengakses perpustakaan." },
+      { status: 401 }
+    );
+  }
+
+  const { user } = current;
   const book = await getBookDetail(id, user);
 
   if (!book) {
@@ -42,7 +51,9 @@ export async function GET(_request: Request, { params }: RouteParams) {
         url: await createSignedReadUrl(file.storage_bucket, file.storage_path)
       }))
     );
-    coverUrl = await createSignedReadUrl(BOOK_COVERS_BUCKET, book.cover_path);
+    if (book.cover_path) {
+      coverUrl = await createSignedReadUrl(BOOK_COVERS_BUCKET, book.cover_path);
+    }
   } catch {
     return NextResponse.json(
       { error: "File baca gagal dibuka. Coba lagi sebentar lagi." },

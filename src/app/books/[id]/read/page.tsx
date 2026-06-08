@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Download, Heart, Library } from "lucide-react";
-import { getCurrentUser } from "@/lib/auth/session";
+import { requireActiveUser } from "@/lib/auth/session";
 import { getBookDetail } from "@/lib/books/queries";
 import { getFavoriteIds } from "@/lib/favorites/queries";
 import { toggleFavorite } from "@/lib/favorites/actions";
@@ -21,7 +21,7 @@ type ReadBookPageProps = {
 
 export default async function ReadBookPage({ params }: ReadBookPageProps) {
   const { id } = await params;
-  const user = await getCurrentUser();
+  const { user } = await requireActiveUser(`/books/${id}/read`);
   const book = await getBookDetail(id, user);
 
   if (!book) {
@@ -29,8 +29,8 @@ export default async function ReadBookPage({ params }: ReadBookPageProps) {
   }
 
   const [favoriteIds, shelves] = await Promise.all([
-    getFavoriteIds(user?.id),
-    user ? getShelves(user.id) : Promise.resolve([])
+    getFavoriteIds(user.id),
+    getShelves(user.id)
   ]);
   const title = formatDisplayTitle(book.title);
   const isFavorite = favoriteIds.has(book.id);

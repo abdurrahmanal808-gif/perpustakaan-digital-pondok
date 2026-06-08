@@ -6,16 +6,21 @@ import { getCoverUrlMap } from "@/lib/books/covers";
 import { getCurrentUser } from "@/lib/auth/session";
 import { getFavoriteIds } from "@/lib/favorites/queries";
 import { BookCard } from "@/components/books/BookCard";
+import { DefaultBookCover } from "@/components/books/DefaultBookCover";
 import { buttonClassName } from "@/components/ui/Button";
 
 export const dynamic = "force-dynamic";
 
 export default async function LandingPage() {
-  const [books, user] = await Promise.all([getFeaturedBooks(4), getCurrentUser()]);
+  const user = await getCurrentUser();
+  const books = user ? await getFeaturedBooks(4) : [];
   const [coverUrls, favoriteIds] = await Promise.all([
     getCoverUrlMap(books),
     getFavoriteIds(user?.id)
   ]);
+  const catalogHref = user
+    ? "/catalog"
+    : "/login?error=auth_required&next=%2Fcatalog";
 
   return (
     <main className="min-h-screen bg-paper">
@@ -25,7 +30,7 @@ export default async function LandingPage() {
             {APP_NAME}
           </Link>
           <div className="flex gap-2">
-            <Link className={buttonClassName("secondary")} href="/catalog">
+            <Link className={buttonClassName("secondary")} href={catalogHref}>
               Katalog
             </Link>
             <Link
@@ -45,13 +50,13 @@ export default async function LandingPage() {
             Perpustakaan digital untuk membaca dan berbagi buku dengan tertib.
           </h1>
           <p className="mt-4 max-w-2xl text-base leading-7 text-slate-700">
-            Upload PDF atau scan kitab, simpan favorit, susun rak pribadi, dan baca
-            langsung dari browser.
+            Masuk untuk mengakses koleksi perpustakaan, membaca PDF atau scan kitab,
+            menyimpan favorit, dan menyusun rak pribadi.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
-            <Link className={buttonClassName()} href="/catalog">
+            <Link className={buttonClassName()} href={catalogHref}>
               <Library size={18} />
-              <span>Lihat katalog</span>
+              <span>{user ? "Lihat katalog" : "Masuk untuk lihat katalog"}</span>
             </Link>
             <Link
               className={buttonClassName("secondary")}
@@ -64,7 +69,7 @@ export default async function LandingPage() {
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          {books.length > 0 ? (
+          {user && books.length > 0 ? (
             books.slice(0, 4).map((book) => (
               <Link
                 className="overflow-hidden rounded-lg border border-gold/20 bg-bone shadow-sm"
@@ -78,22 +83,24 @@ export default async function LandingPage() {
                     src={coverUrls.get(book.id)}
                   />
                 ) : (
-                  <div className="flex aspect-[3/4] items-center justify-center bg-cream p-4 text-center text-sm font-semibold text-clay">
-                    {book.title}
+                  <div className="aspect-[3/4]">
+                    <DefaultBookCover title={book.title} />
                   </div>
                 )}
               </Link>
             ))
           ) : (
             <div className="col-span-2 rounded-lg border border-gold/20 bg-bone p-6 text-sm leading-6 text-slate-600">
-              Katalog masih kosong. Buku pertama akan tampil di sini setelah admin
-              menerbitkannya.
+              {user
+                ? "Katalog masih kosong. Buku pertama akan tampil di sini setelah admin menerbitkannya."
+                : "Koleksi buku hanya tersedia setelah login. Buat akun atau masuk untuk mulai membaca."}
             </div>
           )}
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-4 pb-12 sm:px-6">
+      {user ? (
+        <section className="mx-auto max-w-6xl px-4 pb-12 sm:px-6">
         <div className="mb-5 flex items-center gap-2">
           <BookOpen size={20} className="text-gold" />
           <h2 className="text-xl font-bold text-ink">Buku terbaru</h2>
@@ -108,7 +115,23 @@ export default async function LandingPage() {
             />
           ))}
         </div>
-      </section>
+        </section>
+      ) : (
+        <section className="mx-auto grid max-w-6xl gap-4 px-4 pb-12 sm:px-6 md:grid-cols-3">
+          {[
+            "Katalog tertutup untuk anggota",
+            "Baca PDF dan scan gambar online",
+            "Favorit, rak pribadi, dan riwayat baca"
+          ].map((feature) => (
+            <div
+              className="rounded-lg border border-gold/20 bg-bone p-5 text-sm font-semibold text-ink shadow-sm"
+              key={feature}
+            >
+              {feature}
+            </div>
+          ))}
+        </section>
+      )}
     </main>
   );
 }

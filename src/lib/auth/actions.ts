@@ -15,6 +15,16 @@ export type AuthActionState = {
   error?: string;
 };
 
+function safeRedirectPath(value: FormDataEntryValue | null) {
+  const path = String(value || "");
+
+  if (!path.startsWith("/") || path.startsWith("//")) {
+    return "";
+  }
+
+  return path;
+}
+
 export async function registerUser(
   _prevState: AuthActionState,
   formData: FormData
@@ -23,6 +33,7 @@ export async function registerUser(
   const fullName = String(formData.get("fullName") || "").trim();
   const password = String(formData.get("password") || "");
   const passwordConfirm = String(formData.get("passwordConfirm") || "");
+  const redirectTo = safeRedirectPath(formData.get("redirectTo"));
 
   const usernameError = validateUsername(username);
   if (usernameError) {
@@ -71,7 +82,7 @@ export async function registerUser(
   }
 
   await createSession(data.id);
-  redirect("/dashboard");
+  redirect(redirectTo || "/dashboard");
 }
 
 export async function loginUser(
@@ -80,6 +91,7 @@ export async function loginUser(
 ): Promise<AuthActionState> {
   const username = normalizeUsername(String(formData.get("username") || ""));
   const password = String(formData.get("password") || "");
+  const redirectTo = safeRedirectPath(formData.get("redirectTo"));
 
   const usernameError = validateUsername(username);
   if (usernameError) {
@@ -118,7 +130,7 @@ export async function loginUser(
   }
 
   await createSession(user.id);
-  redirect(user.role === "admin" ? "/admin" : "/dashboard");
+  redirect(redirectTo || (user.role === "admin" ? "/admin" : "/dashboard"));
 }
 
 export async function logoutUser() {

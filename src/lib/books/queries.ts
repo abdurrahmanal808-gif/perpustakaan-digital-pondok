@@ -7,6 +7,7 @@ import type {
   BookType,
   BookWithRelations,
   Category,
+  CategoryWithBookCount,
   DashboardStats,
   PublicUser
 } from "@/lib/db/types";
@@ -50,6 +51,37 @@ export async function getAllCategories() {
   }
 
   return (data || []) as Category[];
+}
+
+export async function getCategoriesWithBookCount(): Promise<CategoryWithBookCount[]> {
+  const supabase = getSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("categories")
+    .select("*")
+    .order("name");
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const categories = (data || []) as Category[];
+  const counts = await Promise.all(
+    categories.map(async (category) => {
+      const { count } = await supabase
+        .from("books")
+        .select("id", { count: "exact", head: true })
+        .eq("category_id", category.id)
+        .neq("status", "deleted");
+
+      return [category.id, count || 0] as const;
+    })
+  );
+  const countMap = new Map(counts);
+
+  return categories.map((category) => ({
+    ...category,
+    book_count: countMap.get(category.id) || 0
+  }));
 }
 
 export async function getPublicBooks(params: BookSearchParams = {}) {
@@ -96,6 +128,10 @@ export async function getPublicBooks(params: BookSearchParams = {}) {
 }
 
 export async function getBookDetail(bookId: string, user?: PublicUser | null) {
+  if (!user) {
+    return null;
+  }
+
   const supabase = getSupabaseAdminClient();
   const { data, error } = await supabase
     .from("books")
@@ -112,7 +148,7 @@ export async function getBookDetail(bookId: string, user?: PublicUser | null) {
 
   const book = data as BookWithRelations;
   const canAccess =
-    book.status === "published" ||
+    (book.status === "published" && !user.is_blocked) ||
     user?.role === "admin" ||
     (user && book.user_id === user.id);
 

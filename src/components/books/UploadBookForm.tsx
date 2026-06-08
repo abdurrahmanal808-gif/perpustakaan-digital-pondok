@@ -62,8 +62,16 @@ export function UploadBookForm({ categories }: UploadBookFormProps) {
   return (
     <>
       <Toast message={toast?.message || ""} tone={toast?.tone} />
+      {categories.length === 0 ? (
+        <div className="rounded-lg border border-gold/20 bg-bone p-6 text-sm text-slate-700 shadow-sm">
+          <p className="font-semibold text-ink">Belum ada kategori aktif.</p>
+          <p className="mt-2">Hubungi admin sebelum mengupload buku.</p>
+        </div>
+      ) : null}
       <form
-        className="rounded-lg border border-gold/20 bg-bone p-5 shadow-sm"
+        className={`rounded-lg border border-gold/20 bg-bone p-5 shadow-sm ${
+          categories.length === 0 ? "mt-4 opacity-60" : ""
+        }`}
         onSubmit={handleSubmit}
       >
         <div className="grid gap-4 md:grid-cols-2">
@@ -92,6 +100,7 @@ export function UploadBookForm({ categories }: UploadBookFormProps) {
             className="mt-1 w-full rounded-md border border-gold/30 bg-white px-3 py-2 text-sm outline-none transition focus:border-pondok focus:ring-2 focus:ring-pondok/10"
             name="categoryId"
             required
+            disabled={categories.length === 0}
           >
             <option value="">Pilih kategori</option>
             {categories.map((category) => (
@@ -116,14 +125,18 @@ export function UploadBookForm({ categories }: UploadBookFormProps) {
         </label>
 
         <label className="block">
-          <span className="text-sm font-medium text-slate-700">Cover buku</span>
+          <span className="text-sm font-medium text-slate-700">
+            Cover buku <span className="text-slate-500">(opsional)</span>
+          </span>
           <input
             accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
             className="mt-1 w-full rounded-md border border-dashed border-gold/40 bg-white px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-pondok file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white"
             name="cover"
-            required
             type="file"
           />
+          <span className="mt-1 block text-xs text-slate-500">
+            Jika dikosongkan, sistem akan memakai cover default.
+          </span>
         </label>
 
         <label className="block">
@@ -176,7 +189,11 @@ export function UploadBookForm({ categories }: UploadBookFormProps) {
         ) : null}
 
         <div className="mt-5 flex justify-end">
-          <Button disabled={isUploading} icon={<Upload size={18} />} type="submit">
+          <Button
+            disabled={isUploading || categories.length === 0}
+            icon={<Upload size={18} />}
+            type="submit"
+          >
             {isUploading ? "Mengupload..." : "Upload buku"}
           </Button>
         </div>

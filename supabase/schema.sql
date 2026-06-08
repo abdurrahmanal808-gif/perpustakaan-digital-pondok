@@ -81,7 +81,7 @@ create table if not exists public.books (
   description text,
   book_type public.book_type not null,
   status public.book_status not null default 'pending',
-  cover_path text not null,
+  cover_path text,
   rights_confirmed boolean not null default false,
   view_count integer not null default 0,
   download_count integer not null default 0,
@@ -201,6 +201,8 @@ create index if not exists shelves_user_id_idx on public.shelves (user_id);
 create index if not exists reading_history_user_idx on public.reading_history (user_id, last_read_at desc);
 create index if not exists downloads_book_id_idx on public.downloads (book_id);
 create index if not exists book_views_book_id_idx on public.book_views (book_id);
+
+alter table public.books alter column cover_path drop not null;
 
 drop trigger if exists users_updated_at on public.users;
 create trigger users_updated_at before update on public.users

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BookOpen, Download, Heart, Library } from "lucide-react";
-import { getCurrentUser } from "@/lib/auth/session";
+import { requireActiveUser } from "@/lib/auth/session";
 import { getBookDetail } from "@/lib/books/queries";
 import { getCoverUrl } from "@/lib/books/covers";
 import { getFavoriteIds } from "@/lib/favorites/queries";
@@ -10,6 +10,7 @@ import { getShelves } from "@/lib/shelves/queries";
 import { addBookToShelf } from "@/lib/shelves/actions";
 import { formatDate, publicName } from "@/lib/format";
 import { buttonClassName, Button } from "@/components/ui/Button";
+import { DefaultBookCover } from "@/components/books/DefaultBookCover";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +22,7 @@ type BookDetailPageProps = {
 
 export default async function BookDetailPage({ params }: BookDetailPageProps) {
   const { id } = await params;
-  const user = await getCurrentUser();
+  const { user } = await requireActiveUser(`/books/${id}`);
   const book = await getBookDetail(id, user);
 
   if (!book) {
@@ -30,8 +31,8 @@ export default async function BookDetailPage({ params }: BookDetailPageProps) {
 
   const [coverUrl, favoriteIds, shelves] = await Promise.all([
     getCoverUrl(book),
-    getFavoriteIds(user?.id),
-    user ? getShelves(user.id) : Promise.resolve([])
+    getFavoriteIds(user.id),
+    getShelves(user.id)
   ]);
   const favoriteActive = favoriteIds.has(book.id);
 
@@ -46,8 +47,8 @@ export default async function BookDetailPage({ params }: BookDetailPageProps) {
               src={coverUrl}
             />
           ) : (
-            <div className="flex aspect-[3/4] items-center justify-center rounded-lg border border-gold/20 bg-cream p-6 text-center font-bold text-clay">
-              {book.title}
+            <div className="aspect-[3/4] overflow-hidden rounded-lg border border-gold/20 shadow-sm">
+              <DefaultBookCover title={book.title} />
             </div>
           )}
         </div>
@@ -84,27 +85,20 @@ export default async function BookDetailPage({ params }: BookDetailPageProps) {
               <Download size={17} />
               <span>Download</span>
             </a>
-            {user ? (
-              <form action={toggleFavorite}>
-                <input name="bookId" type="hidden" value={book.id} />
-                <input
-                  name="active"
-                  type="hidden"
-                  value={favoriteActive ? "true" : "false"}
-                />
-                <Button icon={<Heart size={17} />} type="submit" variant="secondary">
-                  {favoriteActive ? "Tersimpan" : "Favorit"}
-                </Button>
-              </form>
-            ) : (
-              <Link className={buttonClassName("secondary")} href="/login">
-                <Heart size={17} />
-                <span>Favorit</span>
-              </Link>
-            )}
+            <form action={toggleFavorite}>
+              <input name="bookId" type="hidden" value={book.id} />
+              <input
+                name="active"
+                type="hidden"
+                value={favoriteActive ? "true" : "false"}
+              />
+              <Button icon={<Heart size={17} />} type="submit" variant="secondary">
+                {favoriteActive ? "Tersimpan" : "Favorit"}
+              </Button>
+            </form>
           </div>
 
-          {user && shelves.length > 0 ? (
+          {shelves.length > 0 ? (
             <form action={addBookToShelf} className="mt-5 flex flex-wrap gap-2">
               <input name="bookId" type="hidden" value={book.id} />
               <select

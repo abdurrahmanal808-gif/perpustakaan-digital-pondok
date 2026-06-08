@@ -96,15 +96,27 @@ export default async function EditBookPage({
             <input name="status" type="hidden" value="pending" />
           )}
           <label className="block md:col-span-2">
-            <span className="text-sm font-medium text-slate-700">Ganti cover</span>
+            <span className="text-sm font-medium text-slate-700">
+              {book.cover_path ? "Ganti cover" : "Tambah cover"}
+            </span>
             <input
               accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
               className="mt-1 w-full rounded-md border border-dashed border-gold/40 bg-white px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-pondok file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white"
               name="cover"
               type="file"
             />
+            <span className="mt-1 block text-xs text-slate-500">
+              Kosongkan jika tidak ingin mengganti cover.
+            </span>
           </label>
         </div>
+
+        {book.cover_path ? (
+          <label className="mt-4 flex items-start gap-3 rounded-md bg-cream p-3 text-sm text-slate-700">
+            <input className="mt-1" name="removeCover" type="checkbox" />
+            <span>Hapus cover saat ini dan gunakan cover default.</span>
+          </label>
+        ) : null}
 
         <label className="mt-4 block">
           <span className="text-sm font-medium text-slate-700">Deskripsi</span>

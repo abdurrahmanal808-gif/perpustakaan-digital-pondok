@@ -39,6 +39,10 @@ export type Category = {
   updated_at: string;
 };
 
+export type CategoryWithBookCount = Category & {
+  book_count: number;
+};
+
 export type Book = {
   id: string;
   user_id: string;
@@ -48,7 +52,7 @@ export type Book = {
   description: string | null;
   book_type: BookType;
   status: BookStatus;
-  cover_path: string;
+  cover_path: string | null;
   rights_confirmed: boolean;
   view_count: number;
   download_count: number;

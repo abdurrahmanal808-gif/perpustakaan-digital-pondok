@@ -1,4 +1,4 @@
-import { getCurrentUser } from "@/lib/auth/session";
+import { requireActiveUser } from "@/lib/auth/session";
 import { getCoverUrlMap } from "@/lib/books/covers";
 import { getActiveCategories, getPublicBooks } from "@/lib/books/queries";
 import { getFavoriteIds } from "@/lib/favorites/queries";
@@ -13,21 +13,29 @@ type CatalogPageProps = {
     q?: string;
     category?: string;
     type?: "pdf" | "scan" | "";
-    sort?: "newest" | "popular" | "downloads";
+  sort?: "newest" | "popular" | "downloads";
   }>;
 };
 
 export default async function CatalogPage({ searchParams }: CatalogPageProps) {
   const params = await searchParams;
-  const [books, categories, user] = await Promise.all([
+  const query = new URLSearchParams();
+
+  if (params.q) query.set("q", params.q);
+  if (params.category) query.set("category", params.category);
+  if (params.type) query.set("type", params.type);
+  if (params.sort) query.set("sort", params.sort);
+
+  const nextPath = `/catalog${query.toString() ? `?${query.toString()}` : ""}`;
+  const { user } = await requireActiveUser(nextPath);
+  const [books, categories] = await Promise.all([
     getPublicBooks({
       search: params.q,
       category: params.category,
       type: params.type || "",
       sort: params.sort || "newest"
     }),
-    getActiveCategories(),
-    getCurrentUser()
+    getActiveCategories()
   ]);
   const [coverUrls, favoriteIds] = await Promise.all([
     getCoverUrlMap(books),
