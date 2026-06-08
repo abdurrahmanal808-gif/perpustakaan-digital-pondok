@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   BookMarked,
   Clock,
+  Flag,
   Heart,
   LayoutDashboard,
   Library,
@@ -81,6 +82,11 @@ export function AppShell({ children, userName, role }: AppShellProps) {
             href: "/admin/categories",
             label: "Kategori",
             icon: ListTree
+          },
+          {
+            href: "/admin/reports",
+            label: "Laporan",
+            icon: Flag
           }
         ]
       : navItems;

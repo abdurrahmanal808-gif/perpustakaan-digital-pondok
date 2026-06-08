@@ -11,6 +11,7 @@ import { addBookToShelf } from "@/lib/shelves/actions";
 import { formatDate, publicName } from "@/lib/format";
 import { buttonClassName, Button } from "@/components/ui/Button";
 import { DefaultBookCover } from "@/components/books/DefaultBookCover";
+import { ReportBookButton } from "@/components/books/ReportBookButton";
 
 export const dynamic = "force-dynamic";
 
@@ -18,10 +19,18 @@ type BookDetailPageProps = {
   params: Promise<{
     id: string;
   }>;
+  searchParams: Promise<{
+    reported?: string;
+    report_error?: string;
+  }>;
 };
 
-export default async function BookDetailPage({ params }: BookDetailPageProps) {
+export default async function BookDetailPage({
+  params,
+  searchParams
+}: BookDetailPageProps) {
   const { id } = await params;
+  const query = await searchParams;
   const { user } = await requireActiveUser(`/books/${id}`);
   const book = await getBookDetail(id, user);
 
@@ -67,6 +76,18 @@ export default async function BookDetailPage({ params }: BookDetailPageProps) {
             <p>Download: {book.download_count}</p>
           </div>
 
+          {query.reported === "1" ? (
+            <p className="mt-5 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800">
+              Laporan berhasil dikirim. Admin akan memeriksa buku ini.
+            </p>
+          ) : null}
+
+          {query.report_error ? (
+            <p className="mt-5 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-800">
+              {query.report_error}
+            </p>
+          ) : null}
+
           {book.description ? (
             <p className="mt-5 whitespace-pre-line text-sm leading-7 text-slate-700">
               {book.description}
@@ -96,6 +117,9 @@ export default async function BookDetailPage({ params }: BookDetailPageProps) {
                 {favoriteActive ? "Tersimpan" : "Favorit"}
               </Button>
             </form>
+            {book.user_id !== user.id ? (
+              <ReportBookButton bookId={book.id} title={book.title} />
+            ) : null}
           </div>
 
           {shelves.length > 0 ? (

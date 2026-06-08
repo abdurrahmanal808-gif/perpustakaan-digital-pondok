@@ -38,3 +38,35 @@ export const DEFAULT_CATEGORIES = [
 export const BOOK_TYPES = ["pdf", "scan"] as const;
 
 export const BOOK_STATUSES = ["pending", "published", "hidden", "deleted"] as const;
+
+export const BOOK_REPORT_REASONS = [
+  "copyright",
+  "broken_file",
+  "inappropriate_content",
+  "wrong_metadata",
+  "duplicate",
+  "other"
+] as const;
+
+export const BOOK_REPORT_STATUSES = [
+  "open",
+  "reviewing",
+  "resolved",
+  "rejected"
+] as const;
+
+export const BOOK_REPORT_REASON_LABELS = {
+  copyright: "Hak cipta atau izin",
+  broken_file: "File rusak/tidak bisa dibuka",
+  inappropriate_content: "Konten tidak pantas",
+  wrong_metadata: "Metadata salah",
+  duplicate: "Buku duplikat",
+  other: "Lainnya"
+} as const;
+
+export const BOOK_REPORT_STATUS_LABELS = {
+  open: "Menunggu review",
+  reviewing: "Sedang dicek",
+  resolved: "Selesai",
+  rejected: "Ditolak"
+} as const;

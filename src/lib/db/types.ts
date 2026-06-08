@@ -2,6 +2,14 @@ export type UserRole = "user" | "admin";
 export type BookType = "pdf" | "scan";
 export type BookStatus = "pending" | "published" | "hidden" | "deleted";
 export type FileKind = "pdf" | "page" | "cover";
+export type BookReportReason =
+  | "copyright"
+  | "broken_file"
+  | "inappropriate_content"
+  | "wrong_metadata"
+  | "duplicate"
+  | "other";
+export type BookReportStatus = "open" | "reviewing" | "resolved" | "rejected";
 
 export type AppUser = {
   id: string;
@@ -106,6 +114,35 @@ export type ReadingHistory = {
   last_read_at: string;
   created_at: string;
   updated_at: string;
+};
+
+export type BookReport = {
+  id: string;
+  book_id: string;
+  reporter_user_id: string;
+  reason: BookReportReason;
+  description: string | null;
+  status: BookReportStatus;
+  admin_note: string | null;
+  resolved_by: string | null;
+  resolved_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type BookReportWithRelations = BookReport & {
+  books:
+    | (Pick<Book, "id" | "title" | "status" | "user_id"> & {
+        users: Pick<PublicUser, "id" | "username" | "full_name"> | null;
+      })
+    | null;
+  reporter:
+    | Pick<
+        PublicUser,
+        "id" | "username" | "full_name" | "is_blocked" | "blocked_reason"
+      >
+    | null;
+  resolver: Pick<PublicUser, "id" | "username" | "full_name"> | null;
 };
 
 export type DashboardStats = {

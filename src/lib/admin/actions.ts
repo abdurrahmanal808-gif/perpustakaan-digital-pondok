@@ -2,11 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { BOOK_REPORT_STATUSES } from "@/lib/constants";
 import { getSupabaseAdminClient } from "@/lib/db/admin";
 import { requireAdmin } from "@/lib/auth/session";
 import { deleteBook } from "@/lib/books/actions";
 import { slugify } from "@/lib/security/filename";
-import type { UserRole } from "@/lib/db/types";
+import type { BookReportStatus, UserRole } from "@/lib/db/types";
 
 export async function adminUpdateUserRole(formData: FormData) {
   const { user } = await requireAdmin();
@@ -54,6 +55,7 @@ export async function adminBlockUser(formData: FormData) {
     .is("revoked_at", null);
 
   revalidatePath("/admin/users");
+  revalidatePath("/admin/reports");
 }
 
 export async function adminUnblockUser(formData: FormData) {
@@ -74,6 +76,7 @@ export async function adminUnblockUser(formData: FormData) {
     .eq("id", userId);
 
   revalidatePath("/admin/users");
+  revalidatePath("/admin/reports");
 }
 
 export async function adminCreateCategory(formData: FormData) {
@@ -198,6 +201,9 @@ export async function adminHideBook(formData: FormData) {
   await supabase.from("books").update({ status: "hidden" }).eq("id", bookId);
 
   revalidatePath("/admin/books");
+  revalidatePath("/admin/reports");
+  revalidatePath("/admin");
+  revalidatePath(`/books/${bookId}`);
   revalidatePath("/catalog");
 }
 
@@ -219,6 +225,9 @@ export async function adminPublishBook(formData: FormData) {
     .eq("id", bookId);
 
   revalidatePath("/admin/books");
+  revalidatePath("/admin/reports");
+  revalidatePath("/admin");
+  revalidatePath(`/books/${bookId}`);
   revalidatePath("/catalog");
 }
 
@@ -232,4 +241,57 @@ export async function adminDeleteBook(formData: FormData) {
 
   await deleteBook(bookId);
   revalidatePath("/admin/books");
+  revalidatePath("/admin/reports");
+  revalidatePath("/admin");
+  revalidatePath("/catalog");
+}
+
+export async function adminUpdateReportStatus(formData: FormData) {
+  const { user } = await requireAdmin();
+  const reportId = String(formData.get("reportId") || "");
+  const status = String(formData.get("status") || "") as BookReportStatus;
+  const returnStatus = String(formData.get("returnStatus") || "open");
+  const adminNote = String(formData.get("adminNote") || "").trim().slice(0, 800);
+
+  if (!reportId || !BOOK_REPORT_STATUSES.includes(status)) {
+    return;
+  }
+
+  const isClosed = status === "resolved" || status === "rejected";
+  const supabase = getSupabaseAdminClient();
+  const { data: report } = await supabase
+    .from("book_reports")
+    .select("book_id")
+    .eq("id", reportId)
+    .single();
+
+  const { error } = await supabase
+    .from("book_reports")
+    .update({
+      status,
+      admin_note: adminNote || null,
+      resolved_by: isClosed ? user.id : null,
+      resolved_at: isClosed ? new Date().toISOString() : null
+    })
+    .eq("id", reportId);
+
+  if (error) {
+    redirect(
+      `/admin/reports?status=${encodeURIComponent(
+        returnStatus
+      )}&error=${encodeURIComponent("Status laporan gagal diperbarui.")}`
+    );
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/reports");
+  if (report?.book_id) {
+    revalidatePath(`/books/${report.book_id}`);
+  }
+
+  redirect(
+    `/admin/reports?status=${encodeURIComponent(
+      returnStatus
+    )}&success=${encodeURIComponent("Status laporan diperbarui.")}`
+  );
 }
