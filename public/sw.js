@@ -1,5 +1,11 @@
 const CACHE_NAME = "maktabah-sunsal-v1";
-const STATIC_ASSETS = ["/offline", "/icons/app-icon.svg"];
+const STATIC_ASSETS = [
+  "/offline",
+  "/icons/app-icon.svg",
+  "/icons/icon-192.png",
+  "/icons/icon-512.png",
+  "/icons/apple-touch-icon.png"
+];
 
 self.addEventListener("install", (event) => {
   self.skipWaiting();
