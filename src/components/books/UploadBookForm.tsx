@@ -97,6 +97,28 @@ export function UploadBookForm({ categories }: UploadBookFormProps) {
 
     const formData = new FormData(event.currentTarget);
     const cover = formData.get("cover");
+    const selectedBookFiles = formData
+  .getAll("bookFiles")
+  .filter((value): value is File => value instanceof File && value.size > 0);
+
+const totalBookSize = selectedBookFiles.reduce((total, file) => total + file.size, 0);
+const totalCoverSize =
+  cover instanceof File && cover.size > 0 ? cover.size : 0;
+
+const totalUploadSize = totalBookSize + totalCoverSize;
+
+// Batas aman sementara untuk Vercel Function.
+// Upload besar harus memakai direct upload ke Supabase Storage.
+const TEMP_VERCEL_SAFE_LIMIT = 4 * 1024 * 1024;
+
+if (totalUploadSize > TEMP_VERCEL_SAFE_LIMIT) {
+  const message =
+    "Untuk sementara, upload maksimal 4MB karena file masih dikirim lewat server. Upload besar perlu direct upload ke Supabase Storage.";
+  setError(message);
+  setToast({ message, tone: "error" });
+  setIsUploading(false);
+  return;
+}
 
     if (cover instanceof File && cover.size > 0) {
       try {
