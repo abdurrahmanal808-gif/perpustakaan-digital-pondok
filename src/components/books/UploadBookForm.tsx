@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { createClient } from "@supabase/supabase-js";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { Upload } from "lucide-react";
@@ -17,6 +18,26 @@ type UploadResponse = {
   book?: {
     id: string;
   };
+  error?: string;
+};
+
+type SignedUploadItem = {
+  bucket: string;
+  path: string;
+  provider: "supabase" | "r2";
+  signedUrl: string;
+  token: string;
+  originalName?: string;
+  mimeType?: string;
+  fileSize?: number;
+  fileKind?: "pdf" | "page";
+  pageNumber?: number | null;
+};
+
+type SignedUploadResponse = {
+  bookId?: string;
+  cover?: SignedUploadItem | null;
+  files?: SignedUploadItem[];
   error?: string;
 };
 
@@ -79,6 +100,43 @@ async function optimizeCoverFile(file: File) {
     lastModified: Date.now()
   });
 }
+function getSupabaseBrowserClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!url || !anonKey) {
+    throw new Error("Konfigurasi Supabase public env belum lengkap.");
+  }
+
+  return createClient(url, anonKey);
+}
+
+function toClientFile(file: File) {
+  return {
+    name: file.name,
+    type: file.type,
+    size: file.size
+  };
+}
+
+async function uploadToSignedUrl(upload: SignedUploadItem, file: File) {
+  if (upload.provider !== "supabase") {
+    throw new Error("Direct upload untuk R2 belum dikonfigurasi.");
+  }
+
+  const supabase = getSupabaseBrowserClient();
+
+  const { error } = await supabase.storage
+    .from(upload.bucket)
+    .uploadToSignedUrl(upload.path, upload.token, file, {
+      contentType: file.type,
+      upsert: false
+    });
+
+  if (error) {
+    throw new Error(`Upload ${file.name} gagal: ${error.message}`);
+  }
+}
 
 export function UploadBookForm({ categories }: UploadBookFormProps) {
   const router = useRouter();
@@ -90,69 +148,153 @@ export function UploadBookForm({ categories }: UploadBookFormProps) {
   );
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setError("");
-    setToast(null);
-    setIsUploading(true);
+  event.preventDefault();
+  setError("");
+  setToast(null);
+  setIsUploading(true);
 
+  try {
     const formData = new FormData(event.currentTarget);
-    const cover = formData.get("cover");
-    const selectedBookFiles = formData
-  .getAll("bookFiles")
-  .filter((value): value is File => value instanceof File && value.size > 0);
-
-const totalBookSize = selectedBookFiles.reduce((total, file) => total + file.size, 0);
-const totalCoverSize =
-  cover instanceof File && cover.size > 0 ? cover.size : 0;
-
-const totalUploadSize = totalBookSize + totalCoverSize;
-
-// Batas aman sementara untuk Vercel Function.
-// Upload besar harus memakai direct upload ke Supabase Storage.
-const TEMP_VERCEL_SAFE_LIMIT = 4 * 1024 * 1024;
-
-if (totalUploadSize > TEMP_VERCEL_SAFE_LIMIT) {
-  const message =
-    "Untuk sementara, upload maksimal 4MB karena file masih dikirim lewat server. Upload besar perlu direct upload ke Supabase Storage.";
-  setError(message);
-  setToast({ message, tone: "error" });
-  setIsUploading(false);
-  return;
-}
+    let cover = formData.get("cover");
 
     if (cover instanceof File && cover.size > 0) {
       try {
         const optimizedCover = await optimizeCoverFile(cover);
         formData.set("cover", optimizedCover);
+        cover = optimizedCover;
       } catch {
-        setError("Cover gagal diproses. Coba gunakan gambar lain.");
-        setToast({ message: "Cover gagal diproses.", tone: "error" });
-        setIsUploading(false);
-        return;
+        throw new Error("Cover gagal diproses. Coba gunakan gambar lain.");
       }
     }
 
-    const response = await fetch("/api/books/upload", {
+    const bookFiles = formData
+      .getAll("bookFiles")
+      .filter((value): value is File => value instanceof File && value.size > 0);
+
+    if (bookFiles.length === 0) {
+      throw new Error("File buku wajib diupload.");
+    }
+
+    const totalBookSize = bookFiles.reduce((total, file) => total + file.size, 0);
+
+    if (totalBookSize > MAX_UPLOAD_SIZE_BYTES) {
+      throw new Error(`Total file buku maksimal ${formatBytes(MAX_UPLOAD_SIZE_BYTES)}.`);
+    }
+
+    if (
+      cover instanceof File &&
+      cover.size > 0 &&
+      cover.size > MAX_COVER_UPLOAD_SIZE_BYTES
+    ) {
+      throw new Error(`Cover maksimal ${formatBytes(MAX_COVER_UPLOAD_SIZE_BYTES)}.`);
+    }
+
+    const metadataPayload = {
+      title: String(formData.get("title") || ""),
+      author: String(formData.get("author") || ""),
+      description: String(formData.get("description") || ""),
+      categoryId: String(formData.get("categoryId") || ""),
+      bookType: String(formData.get("bookType") || ""),
+      rightsConfirmed: formData.get("rightsConfirmed") === "on",
+      cover: cover instanceof File && cover.size > 0 ? toClientFile(cover) : null,
+      files: bookFiles.map(toClientFile)
+    };
+
+    setToast({ message: "Menyiapkan upload...", tone: "success" });
+
+    const signedResponse = await fetch("/api/uploads/signed-book-upload", {
       method: "POST",
-      body: formData
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(metadataPayload)
     });
 
-    const body = (await response.json().catch(() => ({}))) as UploadResponse;
+    const signedBody = (await signedResponse
+      .json()
+      .catch(() => ({}))) as SignedUploadResponse;
 
-    if (!response.ok || !body.book) {
-      const message = body.error || "Upload gagal.";
-      setError(message);
-      setToast({ message, tone: "error" });
-      setIsUploading(false);
-      return;
+    if (!signedResponse.ok || !signedBody.bookId || !signedBody.files) {
+      throw new Error(signedBody.error || "Gagal membuat URL upload.");
+    }
+
+    if (cover instanceof File && cover.size > 0 && signedBody.cover) {
+      setToast({ message: "Mengupload cover...", tone: "success" });
+      await uploadToSignedUrl(signedBody.cover, cover);
+    }
+
+    for (const [index, file] of bookFiles.entries()) {
+      const signedFile = signedBody.files[index];
+
+      if (!signedFile) {
+        throw new Error("Data upload file tidak lengkap.");
+      }
+
+      setToast({
+        message: `Mengupload file ${index + 1} dari ${bookFiles.length}...`,
+        tone: "success"
+      });
+
+      await uploadToSignedUrl(signedFile, file);
+    }
+
+    setToast({ message: "Menyimpan data buku...", tone: "success" });
+
+    const completeResponse = await fetch("/api/books/complete-upload", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        bookId: signedBody.bookId,
+        title: metadataPayload.title,
+        author: metadataPayload.author,
+        description: metadataPayload.description,
+        categoryId: metadataPayload.categoryId,
+        bookType: metadataPayload.bookType,
+        rightsConfirmed: metadataPayload.rightsConfirmed,
+        cover: signedBody.cover
+          ? {
+              bucket: signedBody.cover.bucket,
+              path: signedBody.cover.path,
+              provider: signedBody.cover.provider
+            }
+          : null,
+        files: signedBody.files.map((file) => ({
+          bucket: file.bucket,
+          path: file.path,
+          provider: file.provider,
+          originalName: file.originalName || "",
+          mimeType: file.mimeType || "",
+          fileSize: file.fileSize || 0,
+          fileKind: file.fileKind || "pdf",
+          pageNumber: file.pageNumber ?? null
+        }))
+      })
+    });
+
+    const completeBody = (await completeResponse
+      .json()
+      .catch(() => ({}))) as UploadResponse;
+
+    if (!completeResponse.ok || !completeBody.book) {
+      throw new Error(completeBody.error || "Metadata buku gagal disimpan.");
     }
 
     setToast({ message: "Upload berhasil. Buku masuk antrean moderasi.", tone: "success" });
+
     window.setTimeout(() => {
-      router.push(`/books/${body.book?.id}`);
+      router.push(`/books/${completeBody.book?.id}`);
       router.refresh();
     }, 600);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Upload gagal.";
+    setError(message);
+    setToast({ message, tone: "error" });
+    setIsUploading(false);
   }
+}
+
 
   return (
     <>

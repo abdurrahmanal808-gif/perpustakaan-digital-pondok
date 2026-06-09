@@ -163,3 +163,27 @@ export function bookPageTarget(
     provider
   };
 }
+export async function createSignedUploadUrl(
+  bucket: string,
+  path: string,
+  provider: StorageProvider = "supabase"
+) {
+  if (provider === "r2") {
+    throw new Error("Signed upload langsung untuk R2 belum dikonfigurasi.");
+  }
+
+  const supabase = getSupabaseAdminClient();
+  const { data, error } = await supabase.storage
+    .from(bucket)
+    .createSignedUploadUrl(path);
+
+  if (error || !data?.signedUrl || !data?.token) {
+    throw new Error("URL upload file gagal dibuat.");
+  }
+
+  return {
+    signedUrl: data.signedUrl,
+    token: data.token,
+    path: data.path || path
+  };
+}
