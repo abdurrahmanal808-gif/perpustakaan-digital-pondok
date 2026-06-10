@@ -2,8 +2,10 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   outputFileTracingRoot: __dirname,
-  serverActions: {
-    bodySizeLimit: "2mb"
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "5mb"
+    }
   }
 };
 
