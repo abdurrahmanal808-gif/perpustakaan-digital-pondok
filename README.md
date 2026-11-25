@@ -156,6 +156,7 @@ where username = 'username_anda';
 - Dashboard user
 - Upload buku PDF atau scan gambar
 - Cover buku opsional
+- Cover otomatis dari halaman pertama PDF atau gambar scan pertama jika cover tidak dipilih
 - Validasi server-side file type dan total ukuran 50MB
 - Katalog publik dengan search, filter, sort
 - Detail buku

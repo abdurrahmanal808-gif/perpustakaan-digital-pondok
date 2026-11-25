@@ -65,7 +65,7 @@ function loadImageFromFile(file: File) {
   });
 }
 
-async function optimizeCoverFile(file: File) {
+async function optimizeCoverFile(file: File, forceJpeg = false) {
   if (!file.type.startsWith("image/")) {
     return file;
   }
@@ -91,7 +91,7 @@ async function optimizeCoverFile(file: File) {
     canvas.toBlob(resolve, "image/jpeg", COVER_QUALITY);
   });
 
-  if (!blob || blob.size >= file.size) {
+  if (!blob || (!forceJpeg && blob.size >= file.size)) {
     return file;
   }
 
@@ -100,6 +100,41 @@ async function optimizeCoverFile(file: File) {
     lastModified: Date.now()
   });
 }
+
+async function coverFromPdf(file: File): Promise<File> {
+  const pdfjs = await import("pdfjs-dist");
+  pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+    "pdfjs-dist/build/pdf.worker.min.mjs",
+    import.meta.url
+  ).toString();
+
+  const pdfDocument = await pdfjs.getDocument({ data: await file.arrayBuffer() }).promise;
+  try {
+    const page = await pdfDocument.getPage(1);
+    const original = page.getViewport({ scale: 1 });
+    const viewport = page.getViewport({
+      scale: Math.min(1, MAX_COVER_EDGE / Math.max(original.width, original.height))
+    });
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(viewport.width));
+    canvas.height = Math.max(1, Math.round(viewport.height));
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("Canvas tidak tersedia.");
+    context.fillStyle = "#fffaf0";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    await page.render({ canvasContext: context, viewport }).promise;
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, "image/jpeg", COVER_QUALITY)
+    );
+    if (!blob) throw new Error("Cover PDF gagal dibuat.");
+    return new File([blob], `cover-halaman-pertama-${Date.now()}.jpg`, {
+      type: "image/jpeg"
+    });
+  } finally {
+    await pdfDocument.destroy();
+  }
+}
+
 function getSupabaseBrowserClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -156,6 +191,24 @@ export function UploadBookForm({ categories }: UploadBookFormProps) {
   try {
     const formData = new FormData(event.currentTarget);
     let cover = formData.get("cover");
+    const bookFiles = formData
+      .getAll("bookFiles")
+      .filter((value): value is File => value instanceof File && value.size > 0);
+
+    if (bookFiles.length === 0) {
+      throw new Error("File buku wajib diupload.");
+    }
+
+    if (!(cover instanceof File) || cover.size === 0) {
+      try {
+        cover = bookType === "pdf"
+          ? await coverFromPdf(bookFiles[0])
+          : await optimizeCoverFile(bookFiles[0], true);
+        formData.set("cover", cover);
+      } catch {
+        throw new Error("Cover otomatis gagal dibuat dari halaman pertama. Coba PDF/gambar lain atau unggah cover sendiri.");
+      }
+    }
 
     if (cover instanceof File && cover.size > 0) {
       try {
@@ -165,14 +218,6 @@ export function UploadBookForm({ categories }: UploadBookFormProps) {
       } catch {
         throw new Error("Cover gagal diproses. Coba gunakan gambar lain.");
       }
-    }
-
-    const bookFiles = formData
-      .getAll("bookFiles")
-      .filter((value): value is File => value instanceof File && value.size > 0);
-
-    if (bookFiles.length === 0) {
-      throw new Error("File buku wajib diupload.");
     }
 
     const totalBookSize = bookFiles.reduce((total, file) => total + file.size, 0);
@@ -372,7 +417,7 @@ export function UploadBookForm({ categories }: UploadBookFormProps) {
             type="file"
           />
           <span className="mt-1 block text-xs text-slate-500">
-            Jika dikosongkan, sistem akan memakai cover default. Cover akan
+            Jika dikosongkan, cover dibuat dari halaman pertama buku. Cover akan
             dikompres otomatis, maksimal {formatBytes(MAX_COVER_UPLOAD_SIZE_BYTES)}.
           </span>
         </label>
