@@ -1,6 +1,7 @@
 import { requireActiveUser } from "@/lib/auth/session";
 import { getUserDashboardStats } from "@/lib/books/queries";
 import { formatDate } from "@/lib/format";
+import { ChangePasswordForm } from "@/components/auth/ChangePasswordForm";
 
 export const dynamic = "force-dynamic";
 
@@ -60,6 +61,7 @@ export default async function ProfilePage() {
           </div>
         </div>
       </div>
+      <ChangePasswordForm />
     </section>
   );
 }

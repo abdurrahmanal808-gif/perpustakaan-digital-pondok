@@ -134,6 +134,8 @@ npm.cmd run dev
 
 ## Membuat Admin Pertama
 
+Sebelum deploy versi dengan pembatasan login, jalankan `supabase/login-protection.sql` di Supabase SQL Editor. Login akan menolak permintaan jika migrasi ini belum diterapkan.
+
 1. Register user dari halaman `/register`.
 2. Di Supabase SQL Editor, jalankan:
 
